@@ -11,4 +11,4 @@ pip install msrestazure==0.6.2
 
 pip list
 
-python $root/formula_generate.py -b use_template
+python $root/formula_generate.py

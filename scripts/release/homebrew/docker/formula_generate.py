@@ -146,12 +146,12 @@ def update_formula() -> str:
             elif line.strip().startswith("sha256"):
                 if pack in nodes.keys():
                     line = re.sub('sha256 ".*"', 'sha256 "{}"'.format(nodes[pack]['checksum']), line, 1)
-                    # print(line)
                     del nodes[pack]
                 else:
                     packs_to_remove.add(pack)
                 pack = None
         elif line.strip().startswith('def install'):
+            print(nodes)
             if nodes:
                 #add the remaining nodes
                 for node_name, node in nodes.items():
@@ -162,6 +162,7 @@ def update_formula() -> str:
                     lines[line_idx] = resource + '\n\n' +l
         lines[idx] = line
     new_text = "\n".join(lines)
+    print(packs_to_remove)
     for pack in packs_to_remove:
         new_text = re.sub(r'resource "{}" do.*?\n  end\n\s+'.format(pack), '', new_text, flags=re.DOTALL)
     return new_text
