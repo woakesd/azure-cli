@@ -61,8 +61,16 @@ helps['network application-gateway address-pool update'] = """
 type: command
 short-summary: Update an address pool.
 examples:
-  - name: Update an address pool, add server.
+  - name: Update backend address pool.
     text: az network application-gateway address-pool update -g MyResourceGroup --gateway-name MyAppGateway \\ -n MyAddressPool --servers 10.0.0.4 10.0.0.5 10.0.0.6
+  - name: Add to the backend address pool by using backend server IP address.
+    text: |
+        az network application-gateway address-pool update -g MyResourceGroup --gateway-name MyAppGateway -n MyAddressPool \\
+            --add backendAddresses ipAddress=10.0.0.4
+  - name: Remove an existing ip of the backend address pool("0" is the index).
+    text: |
+        az network application-gateway address-pool update -g MyResourceGroup --gateway-name MyAppGateway -n MyAddressPool \\
+            --remove backendAddresses 0
 """
 
 helps['network application-gateway auth-cert'] = """
@@ -102,6 +110,10 @@ short-summary: Show an authorization certificate.
 examples:
   - name: Show an authorization certificate.
     text: az network application-gateway auth-cert show -g MyResourceGroup --gateway-name MyAppGateway -n MyAuthCert
+  - name: View expiry date of an authorization certificate. It is in Base-64 encoded X.509(.CER) format.
+    text: |
+        az network application-gateway auth-cert show -g MyResourceGroup --gateway-name MyAppGateway \\
+            -n MyAuthCert --query data -o tsv | base64 -d | openssl x509 -enddate -noout
 """
 
 helps['network application-gateway auth-cert update'] = """
@@ -115,6 +127,32 @@ examples:
 helps['network application-gateway create'] = """
 type: command
 short-summary: Create an application gateway.
+parameters:
+  - name: --trusted-client-cert
+    short-summary: The application gateway trusted client certificate.
+    long-summary: |
+        Usage: --trusted-client-certificates name=client1 data=client.cer
+
+        name: Required. Name of the trusted client certificate that is unique within an Application Gateway
+        data: Required. Certificate public data.
+
+        Multiple trusted client certificates can be specified by using more than one `--trusted-client-certificates` argument.
+  - name: --ssl-profile
+    short-summary: The application gateway ssl profiles.
+    long-summary: |
+        Usage: --ssl-profile name=MySslProfile client-auth-configuration=True cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 policy-type=Custom min-protocol-version=TLSv1_0
+
+        name: Required. Name of the SSL profile that is unique within an Application Gateway.
+        polic-name: Name of Ssl Policy.
+        policy-type: Type of Ssl Policy.
+        min-protocol-version: Minimum version of Ssl protocol to be supported on application gateway.
+        cipher-suites: Ssl cipher suites to be enabled in the specified order to application gateway.
+        disabled-ssl-protocols: Space-separated list of protocols to disable.
+        trusted-client-certificates: Array of references to application gateway trusted client certificates.
+        client-auth-configuration: Client authentication configuration of the application gateway resource.
+
+        Multiple ssl profiles can be specified by using more than one `--ssl-profile` argument.
+
 examples:
   - name: Create an application gateway with VMs as backend servers.
     text: |
@@ -133,6 +171,66 @@ short-summary: Delete an application gateway.
 examples:
   - name: Delete an application gateway.
     text: az network application-gateway delete -g MyResourceGroup -n MyAppGateway
+"""
+
+helps['network application-gateway private-link'] = """
+type: group
+short-summary: Manage Private Link of an Application Gateway
+"""
+
+helps['network application-gateway private-link add'] = """
+type: command
+short-summary: Add a new Private Link with a default IP Configuration and associate it with an existing Frontend IP
+"""
+
+helps['network application-gateway private-link remove'] = """
+type: command
+short-summary: Remove a Private Link and clear association with Frontend IP. The subnet associate with a Private Link might need to clear manually
+"""
+
+helps['network application-gateway private-link show'] = """
+type: command
+short-summary: Show a Private Link
+"""
+
+helps['network application-gateway private-link list'] = """
+type: command
+short-summary: List all the Private Link
+"""
+
+helps['network application-gateway private-link wait'] = """
+type: command
+short-summary: Place the CLI in a waiting state until the condition of corresponding application gateway is met
+"""
+
+helps['network application-gateway private-link ip-config'] = """
+type: group
+short-summary: Manage IP configuration of a Private Link to configure its capability
+"""
+
+helps['network application-gateway private-link ip-config add'] = """
+type: command
+short-summary: Add an IP configuration to a Private Link to scale up its capability
+"""
+
+helps['network application-gateway private-link ip-config remove'] = """
+type: command
+short-summary: Remove an IP configuration from a Private Link to scale down its capability
+"""
+
+helps['network application-gateway private-link ip-config show'] = """
+type: command
+short-summary: Show an IP configuration of a Private Link
+"""
+
+helps['network application-gateway private-link ip-config list'] = """
+type: command
+short-summary: List all the IP configuration of a Private Link
+"""
+
+helps['network application-gateway private-link ip-config wait'] = """
+type: command
+short-summary: Place the CLI in a waiting state until the condition of corresponding application gateway is met
 """
 
 helps['network application-gateway frontend-ip'] = """
@@ -182,11 +280,9 @@ helps['network application-gateway frontend-ip update'] = """
 type: command
 short-summary: Update a frontend IP address.
 examples:
-  - name: Update a frontend IP address to use a new IP address.
-    text: az network application-gateway frontend-ip update -g MyResourceGroup --gateway-name MyAppGateway \\ -n MyFrontendIp --public-ip-address MyNewPublicIpAddress
   - name: Update a frontend IP address. (autogenerated)
     text: |
-        az network application-gateway frontend-ip update --gateway-name MyAppGateway --name MyFrontendIp --resource-group MyResourceGroup --set useRemoteGateways=true
+        az network application-gateway frontend-ip update --gateway-name MyAppGateway --name MyFrontendIp --private-ip-address 10.10.10.50 --resource-group MyResourceGroup
     crafted: true
 """
 
@@ -343,6 +439,10 @@ examples:
     text: |
         az network application-gateway http-settings update --enable-probe true --gateway-name MyAppGateway --name MyHttpSettings --probe MyNewProbe --resource-group MyResourceGroup
     crafted: true
+  - name: Update HTTP settings. (autogenerated)
+    text: |
+        az network application-gateway http-settings update --gateway-name MyAppGateway --host-name-from-backend-pool true --name MyHttpSettings --port 80 --probe MyNewProbe --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network application-gateway identity'] = """
@@ -403,6 +503,10 @@ short-summary: Delete a probe.
 examples:
   - name: Delete a probe.
     text: az network application-gateway probe delete -g MyResourceGroup --gateway-name MyAppGateway -n MyProbe
+  - name: Delete a probe. (autogenerated)
+    text: |
+        az network application-gateway probe delete --gateway-name MyAppGateway --name MyProbe --resource-group MyResourceGroup --subscription MySubscription
+    crafted: true
 """
 
 helps['network application-gateway probe list'] = """
@@ -429,6 +533,10 @@ examples:
     text: |
         az network application-gateway probe update -g MyResourceGroup --gateway-name MyAppGateway \\
             -n MyProbe --timeout 60
+  - name: Update a probe. (autogenerated)
+    text: |
+        az network application-gateway probe update --gateway-name MyAppGateway --host 127.0.0.1 --name MyProbe --resource-group MyResourceGroup --subscription MySubscription
+    crafted: true
 """
 
 helps['network application-gateway redirect-config'] = """
@@ -548,6 +656,11 @@ parameters:
 helps['network application-gateway rewrite-rule delete'] = """
 short-summary: Delete a rewrite rule.
 type: command
+examples:
+  - name: Delete a rewrite rule. (autogenerated)
+    text: |
+        az network application-gateway rewrite-rule delete --gateway-name MyGateway --name MyRewriteRule --resource-group MyResourceGroup --rule-set-name MyRuleSet
+    crafted: true
 """
 
 helps['network application-gateway rewrite-rule list'] = """
@@ -603,6 +716,11 @@ examples:
 helps['network application-gateway rewrite-rule set update'] = """
 short-summary: Update a rewrite rule set.
 type: command
+examples:
+  - name: Update a rewrite rule set. (autogenerated)
+    text: |
+        az network application-gateway rewrite-rule set update --gateway-name MyGateway --name MyRewriteRuleSet --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network application-gateway rewrite-rule show'] = """
@@ -625,6 +743,11 @@ parameters:
   - name: --response-headers
     populator-commands:
       - az network application-gateway rewrite-rule list-response-headers
+examples:
+  - name: Update a rewrite rule. (autogenerated)
+    text: |
+        az network application-gateway rewrite-rule update --gateway-name MyGateway --name MyRewriteRule --remove tags.no_80 --resource-group MyResourceGroup --rule-set-name MyRuleSet
+    crafted: true
 """
 
 helps['network application-gateway root-cert'] = """
@@ -669,6 +792,11 @@ examples:
 helps['network application-gateway root-cert update'] = """
 type: command
 short-summary: Update a trusted root certificate.
+examples:
+  - name: Update a trusted root certificate. (autogenerated)
+    text: |
+        az network application-gateway root-cert update --cert-file /path/to/cert/file --gateway-name MyGateway --name MyTrustedRootCertificate --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network application-gateway rule'] = """
@@ -817,6 +945,11 @@ short-summary: Get the details of an SSL certificate.
 examples:
   - name: Get the details of an SSL certificate.
     text: az network application-gateway ssl-cert show -g MyResourceGroup --gateway-name MyAppGateway -n MySslCert
+  - name: Display the expiry date of SSL certificate. The certificate is returned in PKCS7 format from which the expiration date needs to be retrieved.
+    text: |
+        publiccert=`az network application-gateway ssl-cert show -g MyResourceGroup --gateway-name MyAppGateway --name mywebsite.com --query publicCertData -o tsv`
+        echo "-----BEGIN CERTIFICATE-----" >> public.cert; echo "${publiccert}" >> public.cert; echo "-----END CERTIFICATE-----" >> public.cert
+        cat public.cert | fold -w 64 | openssl pkcs7 -print_certs | openssl x509 -noout -enddate
 """
 
 helps['network application-gateway ssl-cert update'] = """
@@ -1003,7 +1136,7 @@ examples:
             -n MyUrlPathMap --default-http-settings MyNewHttpSettings
   - name: Update a URL path map. (autogenerated)
     text: |
-        az network application-gateway url-path-map update --default-address-pool MyAddressPool --default-http-settings MyNewHttpSettings --gateway-name MyAppGateway --name MyUrlPathMap --resource-group MyResourceGroup
+        az network application-gateway url-path-map update --default-address-pool MyAddressPool --default-http-settings MyNewHttpSettings --gateway-name MyAppGateway --name MyUrlPathMap --remove tags.no_80 --resource-group MyResourceGroup
     crafted: true
 """
 
@@ -1122,6 +1255,11 @@ examples:
 helps['network application-gateway waf-policy list'] = """
 type: command
 short-summary: List application gateway WAF policies.
+examples:
+  - name: List application gateway WAF policies. (autogenerated)
+    text: |
+        az network application-gateway waf-policy list --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network application-gateway waf-policy policy-setting'] = """
@@ -1132,6 +1270,11 @@ short-summary: Defines contents of a web application firewall global configurati
 helps['network application-gateway waf-policy policy-setting update'] = """
 type: command
 short-summary: Update properties of a web application firewall global configuration.
+examples:
+  - name: Update properties of a web application firewall global configuration. (autogenerated)
+    text: |
+        az network application-gateway waf-policy policy-setting update --mode Prevention --policy-name MyPolicy --resource-group MyResourceGroup --state Disabled
+    crafted: true
 """
 
 helps['network application-gateway waf-policy policy-setting list'] = """
@@ -1152,11 +1295,21 @@ short-summary: Manage application gateway web application firewall (WAF) policy 
 helps['network application-gateway waf-policy custom-rule create'] = """
 type: command
 short-summary: Create an application gateway WAF policy custom rule.
+examples:
+  - name: Create an application gateway WAF policy custom rule. (autogenerated)
+    text: |
+        az network application-gateway waf-policy custom-rule create --action Allow --name MyWafPolicyRule --policy-name MyPolicy --priority 500 --resource-group MyResourceGroup --rule-type MatchRule
+    crafted: true
 """
 
 helps['network application-gateway waf-policy custom-rule delete'] = """
 type: command
 short-summary: Delete an application gateway WAF policy custom rule.
+examples:
+  - name: Delete an application gateway WAF policy custom rule. (autogenerated)
+    text: |
+        az network application-gateway waf-policy custom-rule delete --name MyWafPolicyRule --policy-name MyPolicy --resource-group MyResourceGroup --subscription MySubscription
+    crafted: true
 """
 
 helps['network application-gateway waf-policy custom-rule list'] = """
@@ -1207,6 +1360,15 @@ examples:
 helps['network application-gateway waf-policy custom-rule update'] = """
 type: command
 short-summary: Update an application gateway WAF policy custom rule.
+examples:
+  - name: Update an application gateway WAF policy custom rule. (autogenerated)
+    text: |
+        az network application-gateway waf-policy custom-rule update --name MyWAFPolicyRule --policy-name MyPolicy --resource-group MyResourceGroup --set useRemoteGateways=true
+    crafted: true
+  - name: Update an application gateway WAF policy custom rule. (autogenerated)
+    text: |
+        az network application-gateway waf-policy custom-rule update --action Allow --name MyWAFPolicyRule --policy-name MyPolicy --priority 500 --resource-group MyResourceGroup --rule-type MatchRule
+    crafted: true
 """
 
 helps['network application-gateway waf-policy managed-rule'] = """
@@ -1226,13 +1388,29 @@ type: command
 short-summary: >
   Add managed rule set to the WAF policy managed rules. For rule set and rules, please visit:
   https://docs.microsoft.com/en-us/azure/web-application-firewall/ag/application-gateway-crs-rulegroups-rules
+examples:
+  - name: Disable an attack protection rule
+    text: |
+      az network application-gateway waf-policy managed-rule rule-set add --policy-name MyPolicy -g MyResourceGroup --type OWASP --version 3.1 --group-name REQUEST-921-PROTOCOL-ATTACK --rules 921110
+  - name: Add managed rule set to the WAF policy managed rules (autogenerated)
+    text: |
+        az network application-gateway waf-policy managed-rule rule-set add --policy-name MyPolicy --resource-group MyResourceGroup --type Microsoft_BotManagerRuleSet --version 0.1
+    crafted: true
 """
 
 helps['network application-gateway waf-policy managed-rule rule-set update'] = """
 type: command
 short-summary: >
-  Update(Override) existing rule set of a WAF policy managed rules. For rule set and rules, please visit:
-  https://docs.microsoft.com/en-us/azure/web-application-firewall/ag/application-gateway-crs-rulegroups-rules
+  Manage rules of a WAF policy.
+  If --group-name and --rules are provided, override existing rules. If --group-name is provided, clear all rules under a certain rule group. If neither of them are provided, update rule set and clear all rules under itself.
+  For rule set and rules, please visit: https://docs.microsoft.com/en-us/azure/web-application-firewall/ag/application-gateway-crs-rulegroups-rules
+examples:
+  - name: Override rules under rule group EQUEST-921-PROTOCOL-ATTACK
+    text: |
+      az network application-gateway waf-policy managed-rule rule-set update --policy-name MyPolicy -g MyResourceGroup --type OWASP --version 3.1 --group-name REQUEST-921-PROTOCOL-ATTACK --rules 921130 921160
+  - name: Update the OWASP protocol version from 3.1 to 3.0 which will clear the old rules
+    text: |
+      az network application-gateway waf-policy managed-rule rule-set update --policy-name MyPolicy -g MyResourceGroup --type OWASP --version 3.0
 """
 
 helps['network application-gateway waf-policy managed-rule rule-set remove'] = """
@@ -1242,13 +1420,17 @@ short-summary: >
 examples:
   - name: Remove a managed rule set by rule set group name if rule_group_name is specified. Otherwise, remove all rule set.
     text: |
-        az network application-gateway waf-policy managed-rule rule-set remove --policy-name MyPolicy --resource-group MyResourceGroup --type Permanent --version IPv4
-    crafted: true
+        az network application-gateway waf-policy managed-rule rule-set remove --policy-name MyPolicy --resource-group MyResourceGroup --type OWASP --version 3.1
 """
 
 helps['network application-gateway waf-policy managed-rule rule-set list'] = """
 type: command
 short-summary: List all managed rule set.
+examples:
+  - name: List all managed rule set. (autogenerated)
+    text: |
+        az network application-gateway waf-policy managed-rule rule-set list --policy-name MyPolicy --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network application-gateway waf-policy managed-rule exclusion'] = """
@@ -1306,6 +1488,64 @@ short-summary: Place the CLI in a waiting state until a condition of the applica
 examples:
   - name: Place the CLI in a waiting state until the application gateway is created.
     text: az network application-gateway wait -g MyResourceGroup -n MyAppGateway --created
+"""
+
+helps['network application-gateway client-cert'] = """
+type: group
+short-summary: Manage trusted client certificate of application gateway.
+"""
+
+helps['network application-gateway client-cert add'] = """
+type: command
+short-summary: Add trusted client certificate of the application gateway.
+examples:
+  - name: Add trusted client certificate for an existing application gateway.
+    text: az network application-gateway client-cert add --gateway-name MyAppGateway -g MyResourceGroup --name MyCert --data Cert.cer
+"""
+
+helps['network application-gateway client-cert remove'] = """
+type: command
+short-summary: Remove an existing trusted client certificate of the application gateway.
+examples:
+  - name: Remove a trusted client certificate for an existing application gateway.
+    text: az network application-gateway client-cert remove --gateway-name MyAppGateway -g MyResourceGroup --name MyCert
+"""
+
+helps['network application-gateway client-cert list'] = """
+type: command
+short-summary: List the existing trusted client certificate of the application gateway.
+examples:
+  - name: list all the trusted client certificate for an existing application gateway.
+    text: az network application-gateway client-cert list --gateway-name MyAppGateway -g MyResourceGroup
+"""
+
+helps['network application-gateway ssl-profile'] = """
+type: group
+short-summary: Manage ssl profiles of application gateway.
+"""
+
+helps['network application-gateway ssl-profile add'] = """
+type: command
+short-summary: Add ssl profiles of the application gateway.
+examples:
+  - name: Add ssl profile for an existing application gateway.
+    text: az network application-gateway ssl-profile add --gateway-name MyAppGateway -g MyResourceGroup --name MySslProfile
+"""
+
+helps['network application-gateway ssl-profile remove'] = """
+type: command
+short-summary: Remove an existing ssl profiles of the application gateway.
+examples:
+  - name: Remove ssl profile for an existing application gateway.
+    text: az network application-gateway ssl-profile remove --gateway-name MyAppGateway -g MyResourceGroup --name MySslProfile
+"""
+
+helps['network application-gateway ssl-profile list'] = """
+type: command
+short-summary: List the existing ssl profiles of the application gateway.
+examples:
+  - name: List all the ssl profile for an existing application gateway.
+    text: az network application-gateway ssl-profile list --gateway-name MyAppGateway -g MyResourceGroup
 """
 
 helps['network asg'] = """
@@ -1423,6 +1663,10 @@ parameters:
 examples:
   - name: Add a Vnet to a DDoS protection plan in the same subscription.
     text: az network ddos-protection update -g MyResourceGroup -n MyDdosPlan --vnets MyVnet
+  - name: Update a DDoS protection plan. (autogenerated)
+    text: |
+        az network ddos-protection update --name MyDdosPlan --remove tags.no_80 --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network dns'] = """
@@ -1758,6 +2002,10 @@ short-summary: Create an empty MX record set.
 examples:
   - name: Create an empty MX record set.
     text: az network dns record-set mx create -g MyResourceGroup -z www.mysite.com -n MyRecordSet
+  - name: Create an empty MX record set. (autogenerated)
+    text: |
+        az network dns record-set mx create --name MyRecordSet --resource-group MyResourceGroup --ttl 30 --zone-name www.mysite.com
+    crafted: true
 """
 
 helps['network dns record-set mx delete'] = """
@@ -1774,6 +2022,10 @@ short-summary: List all MX record sets in a zone.
 examples:
   - name: List all MX record sets in a zone.
     text: az network dns record-set mx list -g MyResourceGroup -z www.mysite.com
+  - name: List all MX record sets in a zone (autogenerated)
+    text: |
+        az network dns record-set mx list --resource-group MyResourceGroup --subscription MySubscription --zone-name www.mysite.com
+    crafted: true
 """
 
 helps['network dns record-set mx remove-record'] = """
@@ -1844,6 +2096,10 @@ short-summary: Delete an NS record set and all associated records.
 examples:
   - name: Delete an NS record set and all associated records.
     text: az network dns record-set ns delete -g MyResourceGroup -z www.mysite.com -n MyRecordSet
+  - name: Delete an NS record set and all associated records. (autogenerated)
+    text: |
+        az network dns record-set ns delete --name MyRecordSet --resource-group MyResourceGroup --subscription MySubscription --yes --zone-name www.mysite.com
+    crafted: true
 """
 
 helps['network dns record-set ns list'] = """
@@ -1865,6 +2121,10 @@ examples:
     text: |
         az network dns record-set ns remove-record -g MyResourceGroup -z www.mysite.com \\
             -n MyRecordSet -d ns.mysite.com
+  - name: Remove an NS record from its record set. (autogenerated)
+    text: |
+        az network dns record-set ns remove-record --keep-empty-record-set --nsdname ns.mysite.com --record-set-name MyRecordSet --resource-group MyResourceGroup --subscription MySubscription --zone-name www.mysite.com
+    crafted: true
 """
 
 helps['network dns record-set ns show'] = """
@@ -1910,6 +2170,10 @@ short-summary: Create an empty PTR record set.
 examples:
   - name: Create an empty PTR record set.
     text: az network dns record-set ptr create -g MyResourceGroup -z www.mysite.com -n MyRecordSet
+  - name: Create an empty PTR record set. (autogenerated)
+    text: |
+        az network dns record-set ptr create --name MyRecordSet --resource-group MyResourceGroup --subscription MySubscription --zone-name www.mysite.com
+    crafted: true
 """
 
 helps['network dns record-set ptr delete'] = """
@@ -1918,6 +2182,10 @@ short-summary: Delete a PTR record set and all associated records.
 examples:
   - name: Delete a PTR record set and all associated records.
     text: az network dns record-set ptr delete -g MyResourceGroup -z www.mysite.com -n MyRecordSet
+  - name: Delete a PTR record set and all associated records. (autogenerated)
+    text: |
+        az network dns record-set ptr delete --name MyRecordSet --resource-group MyResourceGroup --subscription MySubscription --yes --zone-name www.mysite.com
+    crafted: true
 """
 
 helps['network dns record-set ptr list'] = """
@@ -1974,6 +2242,10 @@ short-summary: Get the details of an SOA record.
 examples:
   - name: Get the details of an SOA record.
     text: az network dns record-set soa show -g MyResourceGroup -z www.mysite.com
+  - name: Get the details of an SOA record (autogenerated)
+    text: |
+        az network dns record-set soa show --resource-group MyResourceGroup --subscription MySubscription --zone-name www.mysite.com
+    crafted: true
 """
 
 helps['network dns record-set soa update'] = """
@@ -1984,6 +2256,10 @@ examples:
     text: |
         az network dns record-set soa update -g MyResourceGroup -z www.mysite.com \\
             -e myhostmaster.mysite.com
+  - name: Update properties of an SOA record. (autogenerated)
+    text: |
+        az network dns record-set soa update --email myhostmaster.mysite.com --only-show-errors --resource-group MyResourceGroup --subscription MySubscription --zone-name www.mysite.com
+    crafted: true
 """
 
 helps['network dns record-set srv'] = """
@@ -2009,6 +2285,10 @@ examples:
     text: |
         az network dns record-set srv create -g MyResourceGroup -z www.mysite.com \\
             -n MyRecordSet
+  - name: Create an empty SRV record set. (autogenerated)
+    text: |
+        az network dns record-set srv create --metadata owner=WebTeam --name MyRecordSet --resource-group MyResourceGroup --ttl 30 --zone-name www.mysite.com
+    crafted: true
 """
 
 helps['network dns record-set srv delete'] = """
@@ -2218,6 +2498,10 @@ examples:
   - name: Update a DNS zone properties to change the user-defined value of a previously set tag.
     text: >
         az network dns zone update -g MyResourceGroup -n www.mysite.com --tags CostCenter=Marketing
+  - name: Update a DNS zone properties (autogenerated)
+    text: |
+        az network dns zone update --name www.mysite.com --remove tags.no_80 --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network express-route'] = """
@@ -2302,6 +2586,10 @@ examples:
   - name: Delete an ExpressRoute circuit.
     text: >
         az network express-route delete -n MyCircuit -g MyResourceGroup
+  - name: Delete an ExpressRoute circuit. (autogenerated)
+    text: |
+        az network express-route delete --name MyCircuit --resource-group MyResourceGroup --subscription MySubscription
+    crafted: true
 """
 
 helps['network express-route gateway'] = """
@@ -2317,6 +2605,14 @@ short-summary: Manage ExpressRoute gateway connections.
 helps['network express-route gateway connection create'] = """
 type: command
 short-summary: Create an ExpressRoute gateway connection.
+examples:
+  - name: Create an ExpressRoute gateway connection.
+    text: |
+        az network express-route gateway connection create --gateway-name MyGateway -n MyExpressRouteConnection -g MyResourceGroup --peering /subscriptions/MySub/resourceGroups/MyResourceGroup/providers/Microsoft.Network/expressRouteCircuits/MyCircuit/peerings/AzurePrivatePeering --associated-route-table /MySub/resourceGroups/MyResourceGroup/providers/Microsoft.Network/virtualHubs/MyHub/hubRouteTables/MyRouteTable1 --propagated-route-tables /MySub/resourceGroups/MyResourceGroup/providers/Microsoft.Network/virtualHubs/MyHub/hubRouteTables/MyRouteTable1 /MySub/resourceGroups/MyResourceGroup/providers/Microsoft.Network/virtualHubs/MyHub/hubRouteTables/MyRouteTable2 --labels label1 label2
+  - name: Create an ExpressRoute gateway connection. (autogenerated)
+    text: |
+        az network express-route gateway connection create --gateway-name MyGateway --name MyExpressRouteConnection --peering /subscriptions/MySub/resourceGroups/MyResourceGroup/providers/Microsoft.Network/expressRouteCircuits/MyCircuit/peerings/AzurePrivatePeering --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network express-route gateway connection delete'] = """
@@ -2352,6 +2648,10 @@ examples:
 helps['network express-route gateway connection update'] = """
 type: command
 short-summary: Update an ExpressRoute gateway connection.
+examples:
+  - name: Update an ExpressRoute gateway connection.
+    text: |
+        az network express-route gateway connection update --gateway-name MyGateway -n MyExpressRouteConnection -g MyResourceGroup --peering /subscriptions/MySub/resourceGroups/MyResourceGroup/providers/Microsoft.Network/expressRouteCircuits/MyCircuit/peerings/AzurePrivatePeering --associated-route-table /MySub/resourceGroups/MyResourceGroup/providers/Microsoft.Network/virtualHubs/MyHub/hubRouteTables/MyRouteTable1 --propagated-route-tables /MySub/resourceGroups/MyResourceGroup/providers/Microsoft.Network/virtualHubs/MyHub/hubRouteTables/MyRouteTable1 /MySub/resourceGroups/MyResourceGroup/providers/Microsoft.Network/virtualHubs/MyHub/hubRouteTables/MyRouteTable2 --labels label1 label2
 """
 
 helps['network express-route gateway create'] = """
@@ -2372,6 +2672,11 @@ examples:
 helps['network express-route gateway list'] = """
 type: command
 short-summary: List ExpressRoute gateways.
+examples:
+  - name: List ExpressRoute gateways. (autogenerated)
+    text: |
+        az network express-route gateway list --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network express-route gateway show'] = """
@@ -2427,6 +2732,15 @@ examples:
             --path primary --peering-name AzurePrivatePeering
 """
 
+helps['network express-route list-route-tables-summary'] = """
+type: command
+short-summary: Show the current routing table summary of an ExpressRoute circuit peering.
+examples:
+  - name: List Route Table Summary
+    text: |
+        az network express-route list-route-tables-summary -g MyResourceGroup -n MyCircuit --path primary --peering-name AzurePrivatePeering
+"""
+
 helps['network express-route list-service-providers'] = """
 type: command
 short-summary: List available ExpressRoute service providers.
@@ -2471,6 +2785,15 @@ type: command
 short-summary: Get the details of an ExpressRoute circuit connection.
 """
 
+helps['network express-route peering connection list'] = """
+type: command
+short-summary: List all global reach connections associated with a private peering in an express route circuit.
+examples:
+  - name: List ExpressRouteCircuit Connection
+    text: |
+        az network express-route peering connection list --circuit-name MyCircuit --peering-name MyPeering --resource-group MyResourceGroup
+"""
+
 helps['network express-route peering create'] = """
 type: command
 short-summary: Create peering settings for an ExpressRoute circuit.
@@ -2481,6 +2804,15 @@ examples:
             --peering-type MicrosoftPeering --peer-asn 10002 --vlan-id 103 \\
             --primary-peer-subnet 101.0.0.0/30 --secondary-peer-subnet 102.0.0.0/30 \\
             --advertised-public-prefixes 101.0.0.0/30
+  - name: Create Microsoft Peering settings with IPv6 configuration.
+    text: |
+        az network express-route peering create -g MyResourceGroup --circuit-name MyCircuit \\
+            --peering-type AzurePrivatePeering --peer-asn 10002 --vlan-id 103 --ip-version ipv6\\
+            --primary-peer-subnet 2002:db00::/126 --secondary-peer-subnet 2003:db00::/126
+  - name: Create peering settings for an ExpressRoute circuit. (autogenerated)
+    text: |
+        az network express-route peering create --circuit-name MyCircuit --peer-asn 10002 --peering-type AzurePublicPeering --primary-peer-subnet 101.0.0.0/30 --resource-group MyResourceGroup --secondary-peer-subnet 102.0.0.0/30 --shared-key Abc123 --vlan-id 103
+    crafted: true
 """
 
 helps['network express-route peering delete'] = """
@@ -2525,6 +2857,19 @@ examples:
             --ip-version ipv6 --primary-peer-subnet 2002:db00::/126 \\
             --secondary-peer-subnet 2003:db00::/126 --advertised-public-prefixes 2002:db00::/126
     supported-profiles: latest
+  - name: Update peering settings of an ExpressRoute circuit. (autogenerated)
+    text: |
+        az network express-route peering update --circuit-name MyCircuit --name MyPeering --peer-asn 10002 --primary-peer-subnet 2002:db00::/126 --resource-group MyResourceGroup --secondary-peer-subnet 2003:db00::/126 --shared-key Abc123 --vlan-id 103
+    crafted: true
+"""
+
+helps['network express-route peering get-stats'] = """
+type: command
+short-summary: Get all traffic stats of an ExpressRoute peering.
+examples:
+  - name: Get ExpressRoute Circuit Peering Traffic Stats
+    text: |
+        az network express-route peering get-stats --circuit-name MyCircuit --name MyPeering --resource-group MyResourceGroup
 """
 
 helps['network express-route port'] = """
@@ -2550,6 +2895,11 @@ examples:
     text: |
         az network express-route port delete --name MyExpressRoutePort --resource-group MyResourceGroup
     crafted: true
+"""
+
+helps['network express-route port generate-loa'] = """
+type: command
+short-summary: Generate and download a letter of authorization for the requested ExpressRoutePort
 """
 
 helps['network express-route port link'] = """
@@ -2603,6 +2953,11 @@ examples:
 helps['network express-route port list'] = """
 type: command
 short-summary: List ExpressRoute ports.
+examples:
+  - name: List ExpressRoute ports. (autogenerated)
+    text: |
+        az network express-route port list --resource-group myresourcegroup
+    crafted: true
 """
 
 helps['network express-route port location'] = """
@@ -2638,6 +2993,11 @@ examples:
 helps['network express-route port update'] = """
 type: command
 short-summary: Update settings of an ExpressRoute port.
+examples:
+  - name: Update settings of an ExpressRoute port (autogenerated)
+    text: |
+        az network express-route port update --name MyExpressRoutePort --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network express-route port identity'] = """
@@ -2699,10 +3059,303 @@ examples:
     text: az network express-route wait -n MyCircuit -g MyResourceGroup --created
 """
 
+helps['network cross-region-lb'] = """
+type: group
+short-summary: Manage and configure cross-region load balancers.
+long-summary: To learn more about Azure Load Balancer visit https://docs.microsoft.com/azure/load-balancer/load-balancer-get-started-internet-arm-cli
+"""
+
+helps['network cross-region-lb create'] = """
+type: command
+short-summary: Create a cross-region load balancer.
+examples:
+  - name: Create a basic load balancer.
+    text: >
+        az network cross-region-lb create -g MyResourceGroup -n MyLb
+"""
+
+helps['network cross-region-lb update'] = """
+type: command
+short-summary: Update a cross-region load balancer.
+long-summary: >
+    This command can only be used to update the tags for a load balancer. Name and resource group are immutable and cannot be updated.
+examples:
+  - name: Update the tags of a load balancer.
+    text: az network cross-region-lb update -g MyResourceGroup -n MyLb --set tags.CostCenter=MyBusinessGroup
+"""
+
+helps['network cross-region-lb list'] = """
+type: command
+short-summary: List load balancers.
+examples:
+  - name: List load balancers.
+    text: az network cross-region-lb list -g MyResourceGroup
+"""
+
+helps['network cross-region-lb wait'] = """
+type: command
+short-summary: Place the CLI in a waiting state until a condition of the cross-region load balancer is met.
+examples:
+  - name: Wait for load balancer to return as created.
+    text: |
+        az network cross-region-lb wait -g MyResourceGroup -n MyLB --created
+"""
+
+helps['network cross-region-lb address-pool'] = """
+type: group
+short-summary: Manage address pools of a cross-region load balancer.
+"""
+
+helps['network cross-region-lb address-pool create'] = """
+type: command
+short-summary: Create an address pool.
+parameters:
+  - name: --backend-address
+    short-summary: Backend addresses information for backend address pool.
+    long-summary: |
+        Usage: --backend-address name=addr1 frontend-ip-address=regional_lb_resource_id
+
+        name: Required. The name of the backend address.
+        frontend-ip-address: Required. Resource id of a regional load balancer.
+
+        Multiple backend addresses can be specified by using more than one `--backend-address` argument.
+  - name: --backend-addresses-config-file --config-file
+    short-summary: A config file used to set backend addresses. This argument is for experienced users. You may encounter parse errors if the json file is invalid.
+    long-summary: |
+        Usage: --backend-addresses-config-file @"{config_file.json}"
+
+        A example config file is
+        [
+          {
+            "name": "address1",
+            "frontendIpAddress": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cli_test_lb_address_pool_addresses000001/providers/Microsoft.Network/loadBalancers/regional-lb/frontendIPConfigurations/fe-rlb1"
+          },
+          {
+            "name": "address2",
+            "frontendIpAddress": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cli_test_lb_address_pool_addresses000001/providers/Microsoft.Network/loadBalancers/regional-lb/frontendIPConfigurations/fe-rlb2"
+          }
+        ]
+examples:
+  - name: Create an address pool.
+    text: az network cross-region-lb address-pool create -g MyResourceGroup --lb-name MyLb -n MyAddressPool
+  - name: Create an address pool with several backend addresses using key-value arguments.
+    text: az network cross-region-lb address-pool create -g MyResourceGroup --lb-name MyLb -n MyAddressPool --backend-address name=addr1 frontend-ip-address=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cli_test_lb_address_pool_addresses000001/providers/Microsoft.Network/loadBalancers/regional-lb/frontendIPConfigurations/fe-rlb1 --backend-address name=addr2 frontend-ip-address=/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cli_test_lb_address_pool_addresses000001/providers/Microsoft.Network/loadBalancers/regional-lb/frontendIPConfigurations/fe-rlb2
+  - name: Create an address pool with several backend addresses using config file
+    text: az network cross-region-lb address-pool create -g MyResourceGroup --lb-name MyLb -n MyAddressPool --backend-addresses-config-file @config_file.json
+"""
+
+helps['network cross-region-lb address-pool delete'] = """
+type: command
+short-summary: Delete an address pool.
+examples:
+  - name: Delete an address pool.
+    text: az network cross-region-lb address-pool delete -g MyResourceGroup --lb-name MyLb -n MyAddressPool
+"""
+
+helps['network cross-region-lb address-pool address'] = """
+type: group
+short-summary: Manage backend addresses of the cross-region load balance backend address pool.
+"""
+
+helps['network cross-region-lb address-pool address add'] = """
+type: command
+short-summary: Add one backend address into the load balance backend address pool.
+examples:
+  - name: Add one backend address into the load balance backend address pool.
+    text: az network cross-region-lb address-pool address add -g MyResourceGroup --lb-name MyLb --pool-name MyAddressPool -n MyAddress --frontend-ip-address /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cli_test_lb_address_pool_addresses000001/providers/Microsoft.Network/loadBalancers/regional-lb/frontendIPConfigurations/fe-rlb2
+"""
+
+helps['network cross-region-lb address-pool address remove'] = """
+type: command
+short-summary: Remove one backend address from the load balance backend address pool.
+examples:
+  - name: Remove one backend address from the load balance backend address pool.
+    text: az network cross-region-lb address-pool address remove -g MyResourceGroup --lb-name MyLb --pool-name MyAddressPool -n MyAddress
+"""
+
+helps['network cross-region-lb address-pool address list'] = """
+type: command
+short-summary: List all backend addresses of the load balance backend address pool.
+examples:
+  - name: List all backend addresses of the load balance backend address pool.
+    text: az network cross-region-lb address-pool address list -g MyResourceGroup --lb-name MyLb --pool-name MyAddressPool
+"""
+
+helps['network cross-region-lb frontend-ip'] = """
+type: group
+short-summary: Manage frontend IP addresses of a cross-region load balancer.
+"""
+
+helps['network cross-region-lb frontend-ip create'] = """
+type: command
+short-summary: Create a frontend IP address.
+examples:
+  - name: Create a frontend ip address for a public load balancer.
+    text: az network cross-region-lb frontend-ip create -g MyResourceGroup -n MyFrontendIp --lb-name MyLb --public-ip-address MyFrontendIp
+"""
+
+helps['network cross-region-lb frontend-ip delete'] = """
+type: command
+short-summary: Delete a frontend IP address.
+examples:
+  - name: Delete a frontend IP address.
+    text: az network cross-region-lb frontend-ip delete -g MyResourceGroup --lb-name MyLb -n MyFrontendIp
+"""
+
+helps['network cross-region-lb frontend-ip list'] = """
+type: command
+short-summary: List frontend IP addresses.
+examples:
+  - name: List frontend IP addresses.
+    text: az network cross-region-lb frontend-ip list -g MyResourceGroup --lb-name MyLb
+"""
+
+helps['network cross-region-lb frontend-ip show'] = """
+type: command
+short-summary: Get the details of a frontend IP address.
+examples:
+  - name: Get the details of a frontend IP address.
+    text: az network cross-region-lb frontend-ip show -g MyResourceGroup --lb-name MyLb -n MyFrontendIp
+"""
+
+helps['network cross-region-lb frontend-ip update'] = """
+type: command
+short-summary: Update a frontend IP address.
+examples:
+  - name: Update the frontend IP address of a public load balancer.
+    text: az network cross-region-lb frontend-ip update -g MyResourceGroup --lb-name MyLb -n MyFrontendIp --public-ip-address MyNewPublicIp
+"""
+
+helps['network cross-region-lb probe'] = """
+type: group
+short-summary: Evaluate probe information and define routing rules.
+"""
+
+helps['network cross-region-lb probe create'] = """
+type: command
+short-summary: Create a probe.
+examples:
+  - name: Create a probe on a load balancer over HTTP and port 80.
+    text: |
+        az network cross-region-lb probe create -g MyResourceGroup --lb-name MyLb -n MyProbe \\
+            --protocol http --port 80 --path /
+  - name: Create a probe on a load balancer over TCP on port 443.
+    text: |
+        az network cross-region-lb probe create -g MyResourceGroup --lb-name MyLb -n MyProbe \\
+            --protocol tcp --port 443
+"""
+
+helps['network cross-region-lb probe delete'] = """
+type: command
+short-summary: Delete a probe.
+examples:
+  - name: Delete a probe.
+    text: az network cross-region-lb probe delete -g MyResourceGroup --lb-name MyLb -n MyProbe
+"""
+
+helps['network cross-region-lb probe list'] = """
+type: command
+short-summary: List probes.
+examples:
+  - name: List probes.
+    text: az network cross-region-lb probe list -g MyResourceGroup --lb-name MyLb -o table
+"""
+
+helps['network cross-region-lb probe show'] = """
+type: command
+short-summary: Get the details of a probe.
+examples:
+  - name: Get the details of a probe.
+    text: az network cross-region-lb probe show -g MyResourceGroup --lb-name MyLb -n MyProbe
+"""
+
+helps['network cross-region-lb probe update'] = """
+type: command
+short-summary: Update a probe.
+examples:
+  - name: Update a probe with a different port and interval.
+    text: az network cross-region-lb probe update -g MyResourceGroup --lb-name MyLb -n MyProbe --port 81 --interval 10
+"""
+
+helps['network cross-region-lb rule'] = """
+type: group
+short-summary: Manage cross-region load balancing rules.
+"""
+
+helps['network cross-region-lb rule create'] = """
+type: command
+short-summary: Create a load balancing rule.
+examples:
+  - name: >
+        Create a load balancing rule that assigns a front-facing IP configuration and port to an address pool and port.
+    text: |
+        az network cross-region-lb rule create -g MyResourceGroup --lb-name MyLb -n MyLbRule --protocol Tcp \\
+            --frontend-ip-name MyFrontEndIp --frontend-port 80 \\
+            --backend-pool-name MyAddressPool --backend-port 80
+  - name: >
+        Create a load balancing rule that assigns a front-facing IP configuration and port to an address pool and port with the floating ip feature.
+    text: |
+        az network cross-region-lb rule create -g MyResourceGroup --lb-name MyLb -n MyLbRule --protocol Tcp \\
+            --frontend-ip-name MyFrontEndIp --backend-pool-name MyAddressPool  \\
+            --floating-ip true --frontend-port 80 --backend-port 80
+  - name: >
+        Create an HA ports load balancing rule that assigns a frontend IP and port to use all available backend IPs in a pool on the same port.
+    text: |
+        az network cross-region-lb rule create -g MyResourceGroup --lb-name MyLb -n MyHAPortsRule \\
+            --protocol All --frontend-port 0 --backend-port 0 --frontend-ip-name MyFrontendIp \\
+            --backend-pool-name MyAddressPool
+"""
+
+helps['network cross-region-lb rule delete'] = """
+type: command
+short-summary: Delete a load balancing rule.
+examples:
+  - name: Delete a load balancing rule.
+    text: az network cross-region-lb rule delete -g MyResourceGroup --lb-name MyLb -n MyLbRule
+"""
+
+helps['network cross-region-lb rule list'] = """
+type: command
+short-summary: List load balancing rules.
+examples:
+  - name: List load balancing rules.
+    text: az network cross-region-lb rule list -g MyResourceGroup --lb-name MyLb -o table
+"""
+
+helps['network cross-region-lb rule show'] = """
+type: command
+short-summary: Get the details of a load balancing rule.
+examples:
+  - name: Get the details of a load balancing rule.
+    text: az network cross-region-lb rule show -g MyResourceGroup --lb-name MyLb -n MyLbRule
+"""
+
+helps['network cross-region-lb rule update'] = """
+type: command
+short-summary: Update a load balancing rule.
+examples:
+  - name: Update a load balancing rule to change the protocol to UDP.
+    text: az network cross-region-lb rule update -g MyResourceGroup --lb-name MyLb -n MyLbRule --protocol Udp
+    examples:
+  - name: Update a load balancing rule to support HA ports.
+    text: az network cross-region-lb rule update -g MyResourceGroup --lb-name MyLb -n MyLbRule \\ --protocol All --frontend-port 0 --backend-port 0
+"""
+
 helps['network lb'] = """
 type: group
 short-summary: Manage and configure load balancers.
-long-summary: To learn more about Azure Load Balancer visit https://docs.microsoft.com/azure/load-balancer/load-balancer-get-started-internet-arm-cli
+long-summary: |
+  [Coming breaking change] In the coming release, the default behavior will be changed. When sku is Standard and in zone-redundant regions, the default 'zones' of 'frontendIPConfigurations' will display as 'zones:[1,2,3]' instead of 'zones:null'.
+  To learn more about Azure Load Balancer visit https://docs.microsoft.com/azure/load-balancer/load-balancer-get-started-internet-arm-cli
+"""
+
+helps['network lb wait'] = """
+type: command
+short-summary: Place the CLI in a waiting state until a condition of the load balancer is met.
+examples:
+  - name: Wait for load balancer to return as created.
+    text: |
+        az network lb wait -g MyResourceGroup -n MyLB --created
 """
 
 helps['network lb address-pool'] = """
@@ -2713,9 +3366,54 @@ short-summary: Manage address pools of a load balancer.
 helps['network lb address-pool create'] = """
 type: command
 short-summary: Create an address pool.
+parameters:
+  - name: --backend-address
+    short-summary: Backend addresses information for backend address pool. If it's used, --vnet is required or subnet is required.
+    long-summary: |
+        Usage1: --backend-address name=addr1 ip-address=10.0.0.1 --vnet MyVnet
+        Usage2: --backend-address name=addr1 ip-address=10.0.0.1 subnet=/subscriptions/000/resourceGroups/MyRg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet1
+        Usage3: --backend-address name=addr1 ip-address=10.0.0.1 subnet=subnet1 --vnet MyVnet
+
+        name: Required. The name of the backend address.
+        ip-address: Required. Ip Address within the Virtual Network.
+        subnet: Name or Id of the subnet.
+
+        Multiple backend addresses can be specified by using more than one `--backend-address` argument.
+  - name: --backend-addresses-config-file
+    short-summary: A config file used to set backend addresses. This argument is for experienced users. You may encounter parse errors if the json file is invalid.
+    long-summary: |
+        Usage: --backend-addresses-config-file @"{config_file.json}"
+
+        A example config file is
+        [
+          {
+            "name": "address1",
+            "virtualNetwork": "clitestvnet",
+            "ipAddress": "10.0.0.4"
+          },
+          {
+            "name": "address2",
+            "virtualNetwork": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/cli_test_lb_address_pool_addresses000001/providers/Microsoft.Network/virtualNetworks/clitestvnet",
+            "ipAddress": "10.0.0.5"
+          },
+          {
+            "name": "address3",
+            "subnet": "subnet3",
+            "ipAddress": "10.0.0.6"
+          },
+          {
+            "name": "address4",
+            "subnet": "/subscriptions/000/resourceGroups/MyRg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet4",
+            "ipAddress": "10.0.0.7"
+          }
+        ]
 examples:
   - name: Create an address pool.
     text: az network lb address-pool create -g MyResourceGroup --lb-name MyLb -n MyAddressPool
+  - name: Create an address pool with several backend addresses using key-value arguments.
+    text: az network lb address-pool create -g MyResourceGroup --lb-name MyLb -n MyAddressPool --vnet {VnetResourceId} --backend-address name=addr1 ip-address=10.0.0.1 --backend-address name=addr2 ip-address=10.0.0.3
+  - name: Create an address pool with several backend addresses using config file
+    text: az network lb address-pool create -g MyResourceGroup --lb-name MyLb -n MyAddressPool --backend-addresses-config-file @config_file.json
 """
 
 helps['network lb address-pool delete'] = """
@@ -2740,6 +3438,37 @@ short-summary: Get the details of an address pool.
 examples:
   - name: Get the details of an address pool.
     text: az network lb address-pool show -g MyResourceGroup --lb-name MyLb -n MyAddressPool
+"""
+
+helps['network lb address-pool address'] = """
+type: group
+short-summary: Manage backend addresses of the load balance backend address pool.
+"""
+
+helps['network lb address-pool address add'] = """
+type: command
+short-summary: Add one backend address into the load balance backend address pool.
+examples:
+  - name: Add one backend address into the load balance backend address pool.
+    text: az network lb address-pool address add -g MyResourceGroup --lb-name MyLb --pool-name MyAddressPool -n MyAddress --vnet MyVnet --ip-address 10.0.0.1
+  - name: Add one backend address into the load balance backend address pool with subnet.
+    text: az network lb address-pool address add -g MyResourceGroup --lb-name MyLb --pool-name MyAddressPool -n MyAddress --subnet /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/MyRg/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet2 --ip-address 10.0.0.1
+"""
+
+helps['network lb address-pool address remove'] = """
+type: command
+short-summary: Remove one backend address from the load balance backend address pool.
+examples:
+  - name: Remove one backend address from the load balance backend address pool.
+    text: az network lb address-pool address remove -g MyResourceGroup --lb-name MyLb --pool-name MyAddressPool -n MyAddress
+"""
+
+helps['network lb address-pool address list'] = """
+type: command
+short-summary: List all backend addresses of the load balance backend address pool.
+examples:
+  - name: List all backend addresses of the load balance backend address pool.
+    text: az network lb address-pool address list -g MyResourceGroup --lb-name MyLb --pool-name MyAddressPool
 """
 
 helps['network lb create'] = """
@@ -2883,6 +3612,14 @@ examples:
     text: |
         az network lb inbound-nat-pool update --backend-port 8080 --enable-tcp-reset true --frontend-port-range-end 89 --frontend-port-range-start 80 --lb-name MyLb --name MyNatPool --resource-group MyResourceGroup
     crafted: true
+  - name: Update an inbound NAT address pool. (autogenerated)
+    text: |
+        az network lb inbound-nat-pool update --enable-tcp-reset true --lb-name MyLb --name MyNatPool --protocol Udp --resource-group MyResourceGroup
+    crafted: true
+  - name: Update an inbound NAT address pool. (autogenerated)
+    text: |
+        az network lb inbound-nat-pool update --backend-port 8080 --floating-ip true --frontend-port-range-end 89 --frontend-port-range-start 80 --lb-name MyLb --name MyNatPool --protocol Udp --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network lb inbound-nat-rule'] = """
@@ -3007,10 +3744,6 @@ examples:
     text: |
         az network lb outbound-rule update --lb-name MyLb --name MyOutboundRule --outbound-ports 10000 --resource-group MyResourceGroup
     crafted: true
-  - name: Update an outbound-rule. (autogenerated)
-    text: |
-        az network lb outbound-rule update --frontend-ip-configs myfrontendoutbound --lb-name MyLb --name MyOutboundRule --resource-group MyResourceGroup
-    crafted: true
 """
 
 helps['network lb probe'] = """
@@ -3062,6 +3795,10 @@ short-summary: Update a probe.
 examples:
   - name: Update a probe with a different port and interval.
     text: az network lb probe update -g MyResourceGroup --lb-name MyLb -n MyProbe --port 81 --interval 10
+  - name: Update a probe. (autogenerated)
+    text: |
+        az network lb probe update --lb-name MyLb --name MyProbe --port 81 --protocol Http --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network lb rule'] = """
@@ -3130,6 +3867,10 @@ examples:
     text: |
         az network lb rule update --disable-outbound-snat true --lb-name MyLb --name MyLbRule --resource-group MyResourceGroup
     crafted: true
+  - name: Update a load balancing rule. (autogenerated)
+    text: |
+        az network lb rule update --idle-timeout 5 --lb-name MyLb --name MyLbRule --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network lb show'] = """
@@ -3155,7 +3896,9 @@ type: command
 short-summary: List all service tags which are below to different resources
 long-summary: >
     A service tag represents a group of IP address prefixes to help minimize complexity for security rule creation.
-    To learn more about list-service-tags, visit https://docs.microsoft.com/en-us/azure/virtual-network/security-overview#service-tags
+    To learn more about list-service-tags, visit https://docs.microsoft.com/en-us/azure/virtual-network/security-overview#service-tags. \\
+    Note that the location parameter is used as a reference for version (not as a filter based on location).
+    For example, even if you specify --location eastus2 you will get the list of service tags with prefix details across all regions but limited to the cloud that your subscription belongs to (i.e. Public, US government, China or Germany).
 examples:
   - name: Gets a list of service tag information resources. (autogenerated)
     text: |
@@ -3466,6 +4209,10 @@ short-summary: Place the CLI in a waiting state until a condition of the network
 examples:
   - name: Pause CLI until the network interface is created.
     text: az network nic wait -g MyResourceGroup -n MyNic --created
+  - name: Place the CLI in a waiting state until a condition of the network interface is met. (autogenerated)
+    text: |
+        az network nic wait --deleted --name MyNic --resource-group MyResourceGroup --subscription MySubscription
+    crafted: true
 """
 
 helps['network nsg'] = """
@@ -3524,7 +4271,7 @@ examples:
     text: |
         az network nsg rule create -g MyResourceGroup --nsg-name MyNsg -n MyNsgRuleWithTags \\
             --priority 400 --source-address-prefixes VirtualNetwork --destination-address-prefixes Storage \\
-            --destination-port-ranges * --direction Outbound --access Allow --protocol Tcp --description "Allow VirtualNetwork to Storage."
+            --destination-port-ranges '*' --direction Outbound --access Allow --protocol Tcp --description "Allow VirtualNetwork to Storage."
   - name: Create a security rule using application security groups. https://aka.ms/applicationsecuritygroups
     text: |
         az network nsg rule create -g MyResourceGroup --nsg-name MyNsg -n MyNsgRuleWithAsg \\
@@ -3604,7 +4351,7 @@ type: command
 short-summary: Create a private endpoint.
 examples:
   - name: Create a private endpoint.
-    text: az network private-endpoint create -g MyResourceGroup -n MyPE --vnet-name MyVnetName --subnet MySubnet --private-connection-resource-id ""/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/MyResourceGroup/providers/Microsoft.Network/privateLinkServices/MyPLS"" --connection-name tttt -l centralus
+    text: az network private-endpoint create -g MyResourceGroup -n MyPE --vnet-name MyVnetName --subnet MySubnet --private-connection-resource-id "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/MyResourceGroup/providers/Microsoft.Network/privateLinkServices/MyPLS" --connection-name tttt -l centralus
 """
 
 helps['network private-endpoint delete'] = """
@@ -3638,6 +4385,70 @@ short-summary: Update a private endpoint.
 examples:
   - name: Update a private endpoint.
     text: az network private-endpoint update -g MyResourceGroup -n MyPE --request-message "test" --tags mytag=hello
+  - name: Update a private endpoint. (autogenerated)
+    text: |
+        az network private-endpoint update --name MyPE --resource-group MyResourceGroup --set useRemoteGateways=true
+    crafted: true
+"""
+
+helps['network private-endpoint dns-zone-group'] = """
+type: group
+short-summary: Manage private endpoint dns zone group.
+"""
+
+helps['network private-endpoint dns-zone-group create'] = """
+type: command
+short-summary: Create a private endpoint dns zone group.
+examples:
+  - name: Create a private endpoint dns zone group.
+    text: az network private-endpoint dns-zone-group create --endpoint-name MyPE -g MyRG -n MyZoneGroup --zone-name Zone1 --private-dns-zone PrivateDNSZone1
+
+"""
+
+helps['network private-endpoint dns-zone-group add'] = """
+type: command
+short-summary: Add a private endpoint dns zone into a dns zone group.
+examples:
+  - name: Add a private endpoint dns zone group.
+    text: az network private-endpoint dns-zone-group add --endpoint-name MyPE -g MyRG -n MyZoneGroup --zone-name Zone1 --private-dns-zone PrivateDNSZone1
+"""
+
+helps['network private-endpoint dns-zone-group remove'] = """
+type: command
+short-summary: Remove a private endpoint dns zone into a dns zone group.
+examples:
+  - name: Remove a private endpoint dns zone group.
+    text: az network private-endpoint dns-zone-group remove --endpoint-name MyPE -g MyRG -n MyZoneGroup --zone-name Zone1
+"""
+
+helps['network private-endpoint dns-zone-group delete'] = """
+type: command
+short-summary: Delete a private endpoint dns zone group.
+examples:
+  - name: Delete a private endpoint dns zone group. (autogenerated)
+    text: |
+        az network private-endpoint dns-zone-group delete --endpoint-name MyEndpoint --name MyPrivateDnsZoneGroup --resource-group MyResourceGroup
+    crafted: true
+"""
+
+helps['network private-endpoint dns-zone-group list'] = """
+type: command
+short-summary: List all private endpoint dns zone groups.
+examples:
+  - name: List all private endpoint dns zone groups. (autogenerated)
+    text: |
+        az network private-endpoint dns-zone-group list --endpoint-name MyEndpoint --resource-group MyResourceGroup
+    crafted: true
+"""
+
+helps['network private-endpoint dns-zone-group show'] = """
+type: command
+short-summary: Show a private endpoint dns zone group.
+examples:
+  - name: Show a private endpoint dns zone group. (autogenerated)
+    text: |
+        az network private-endpoint dns-zone-group show --endpoint-name MyEndpoint --name MyPrivateDnsZoneGroup --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network private-link-service'] = """
@@ -3683,6 +4494,11 @@ examples:
 helps['network private-link-service delete'] = """
 type: command
 short-summary: Delete a private link service.
+examples:
+  - name: Delete a private link service. (autogenerated)
+    text: |
+        az network private-link-service delete --name MyPrivateLinkService --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network private-link-service list'] = """
@@ -3706,6 +4522,88 @@ short-summary: Update a private link service.
 examples:
   - name: Update a private link service
     text: az network private-link-service update -g MyResourceGroup -n MyPLSName --visibility SubId1 SubId2 --auto-approval SubId1 SubId2
+"""
+
+helps['network private-endpoint-connection'] = """
+type: group
+short-summary: Manage private endpoint connections.
+"""
+
+helps['network private-endpoint-connection approve'] = """
+type: command
+short-summary: Approve a private endpoint connection.
+examples:
+  - name: Approve a private endpoint connection for a storage account.
+    text: az network private-endpoint-connection approve -g MyResourceGroup -n MyPrivateEndpoint --resource-name MySA --type Microsoft.Storage/storageAccounts --description "Approved"
+  - name: Approve a private endpoint connection for a keyvault.
+    text: az network private-endpoint-connection approve -g MyResourceGroup -n MyPrivateEndpoint --resource-name MyKV --type Microsoft.Keyvault/vaults --description "Approved"
+  - name: Approve a private endpoint connection for an ACR.
+    text: az network private-endpoint-connection approve --id /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.ContainerRegistry/registries/testreg000002/privateEndpointConnections/testreg000002.6e6bf72bc59d41cc89c698d4cc5ee79d --description "Approved"
+"""
+
+helps['network private-endpoint-connection reject'] = """
+type: command
+short-summary: Reject a private endpoint connection.
+examples:
+  - name: Reject a private endpoint connection for a storage account.
+    text: az network private-endpoint-connection reject -g MyResourceGroup -n MyPrivateEndpoint --resource-name MySA --type Microsoft.Storage/storageAccounts --description "Rejected"
+  - name: Reject a private endpoint connection for a keyvault.
+    text: az network private-endpoint-connection reject -g MyResourceGroup -n MyPrivateEndpoint --resource-name MyKV --type Microsoft.Keyvault/vaults --description "Rejected"
+  - name: Reject a private endpoint connection for an ACR.
+    text: az network private-endpoint-connection reject --id /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.ContainerRegistry/registries/testreg000002/privateEndpointConnections/testreg000002.6e6bf72bc59d41cc89c698d4cc5ee79d --description "Rejected"
+"""
+
+helps['network private-endpoint-connection delete'] = """
+type: command
+short-summary: Delete a private endpoint connection.
+examples:
+  - name: Delete a private endpoint connection for a storage account.
+    text: az network private-endpoint-connection delete -g MyResourceGroup -n MyPrivateEndpoint --resource-name MySA --type Microsoft.Storage/storageAccounts
+  - name: Delete a private endpoint connection for a keyvault.
+    text: az network private-endpoint-connection delete -g MyResourceGroup -n MyPrivateEndpoint --resource-name MyKV --type Microsoft.Keyvault/vaults
+  - name: Delete a private endpoint connection for an ACR.
+    text: az network private-endpoint-connection delete --id /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.ContainerRegistry/registries/testreg000002/privateEndpointConnections/testreg000002.6e6bf72bc59d41cc89c698d4cc5ee79d
+"""
+
+helps['network private-endpoint-connection show'] = """
+type: command
+short-summary: Show a private endpoint connection.
+examples:
+  - name: Show a private endpoint connection for a storage account.
+    text: az network private-endpoint-connection show -g MyResourceGroup -n MyPrivateEndpoint --resource-name MySA --type Microsoft.Storage/storageAccounts
+  - name: Show a private endpoint connection for a keyvault.
+    text: az network private-endpoint-connection show -g MyResourceGroup -n MyPrivateEndpoint --resource-name MyKV --type Microsoft.Keyvault/vaults
+  - name: Show a private endpoint connection for an ACR.
+    text: az network private-endpoint-connection show --id /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.ContainerRegistry/registries/testreg000002/privateEndpointConnections/testreg000002.6e6bf72bc59d41cc89c698d4cc5ee79d
+"""
+
+helps['network private-endpoint-connection list'] = """
+type: command
+short-summary: List all private endpoint connections.
+examples:
+  - name: List all private endpoint connections for a storage account.
+    text: az network private-endpoint-connection list -g MyResourceGroup -n MySA --type Microsoft.Storage/storageAccounts
+  - name: List all private endpoint connections for a keyvault.
+    text: az network private-endpoint-connection list -g MyResourceGroup -n MyKV --type Microsoft.Keyvault/vaults
+  - name: List all private endpoint connections for an ACR.
+    text: az network private-endpoint-connection list --id /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.ContainerRegistry/registries/testreg000002
+"""
+
+helps['network private-link-resource'] = """
+type: group
+short-summary: Manage private link resources.
+"""
+
+helps['network private-link-resource list'] = """
+type: command
+short-summary: List all private link resources.
+examples:
+  - name: List all private link resources for a storage account.
+    text: az network private-link-resource list -g MyResourceGroup -n MySA --type Microsoft.Storage/storageAccounts
+  - name: List all private link resources for a keyvault.
+    text: az network private-link-resource list -g MyResourceGroup -n MyKV --type Microsoft.Keyvault/vaults
+  - name: List all private link resources for an ACR.
+    text: az network private-link-resource list --id /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.ContainerRegistry/registries/testreg000002
 """
 
 helps['network profile'] = """
@@ -4055,7 +4953,7 @@ examples:
     text: az network route-table route update -g MyResourceGroup --route-table-name MyRouteTable \\ -n MyRoute --next-hop-ip-address 10.0.100.5
   - name: Update a route in a route table. (autogenerated)
     text: |
-        az network route-table route update --address-prefix 10.0.0.0/16 --name MyRoute --next-hop-ip-address 10.0.100.5 --next-hop-type VirtualNetworkGateway --route-table-name MyRouteTable
+        az network route-table route update --address-prefix 10.0.0.0/16 --name MyRoute --next-hop-ip-address 10.0.100.5 --next-hop-type VirtualNetworkGateway --resource-group MyResourceGroup --route-table-name MyRouteTable
     crafted: true
 """
 
@@ -4142,16 +5040,31 @@ parameters:
 helps['network service-endpoint policy-definition delete'] = """
 type: command
 short-summary: Delete a service endpoint policy definition.
+examples:
+  - name: Delete a service endpoint policy definition (autogenerated)
+    text: |
+        az network service-endpoint policy-definition delete --name myserviceendpointpolicydefinition --policy-name mypolicy --resource-group myresourcegroup
+    crafted: true
 """
 
 helps['network service-endpoint policy-definition list'] = """
 type: command
 short-summary: List service endpoint policy definitions.
+examples:
+  - name: List service endpoint policy definitions. (autogenerated)
+    text: |
+        az network service-endpoint policy-definition list --policy-name MyPolicy --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network service-endpoint policy-definition show'] = """
 type: command
 short-summary: Get the details of a service endpoint policy definition.
+examples:
+  - name: Get the details of a service endpoint policy definition. (autogenerated)
+    text: |
+        az network service-endpoint policy-definition show --name myserviceendpointpolicydefinition --policy-name mypolicy --resource-group myresourcegroup
+    crafted: true
 """
 
 helps['network service-endpoint policy-definition update'] = """
@@ -4300,6 +5213,10 @@ short-summary: Update a traffic manager profile.
 examples:
   - name: Update a traffic manager profile to change the TTL to 300.
     text: az network traffic-manager profile update -g MyResourceGroup -n MyTmProfile --ttl 300
+  - name: Update a traffic manager profile. (autogenerated)
+    text: |
+        az network traffic-manager profile update --name MyTmProfile --resource-group MyResourceGroup --status Enabled
+    crafted: true
 """
 
 helps['network vnet'] = """
@@ -4433,6 +5350,14 @@ examples:
     text: az network vnet show -g MyResourceGroup -n MyVNet
 """
 
+helps['network vnet list-available-ips'] = """
+type: command
+short-summary: List some available ips in the vnet.
+examples:
+  - name: List some available ips in the vnet.
+    text: az network vnet list-available-ips -g MyResourceGroup -n MyVNet
+"""
+
 helps['network vnet subnet'] = """
 type: group
 short-summary: Manage subnets in an Azure Virtual Network.
@@ -4523,6 +5448,8 @@ short-summary: Update a virtual network.
 examples:
   - name: Update a virtual network with the IP address of a DNS server.
     text: az network vnet update -g MyResourceGroup -n MyVNet --dns-servers 10.2.0.8
+  - name: Update a virtual network to delete DNS server.
+    text: az network vnet update -g MyResourceGroup -n MyVNet --dns-servers ''
   - name: Update a virtual network. (autogenerated)
     text: |
         az network vnet update --address-prefixes 40.1.0.0/24 --name MyVNet --resource-group MyResourceGroup
@@ -4549,7 +5476,12 @@ examples:
     text: |
         az network vnet-gateway create -g MyResourceGroup -n MyVnetGateway --public-ip-address MyGatewayIp \\
             --vnet MyVnet --gateway-type Vpn --sku VpnGw1 --vpn-type RouteBased --address-prefixes 40.1.0.0/24 \\
-            --client-protocol IkeV2 SSTP --radius-secret 111_aaa --radius-server 30.1.1.15
+            --client-protocol IkeV2 SSTP --radius-secret 111_aaa --radius-server 30.1.1.15 --vpn-gateway-generation Generation1
+
+  - name: >
+        Create a basic virtual network gateway with multi authentication
+    text: |
+        az network vnet-gateway create -g MyResourceGroup -n MyVnetGateway --public-ip-address MyGatewayIp --vnet MyVnet --gateway-type Vpn --sku VpnGw1 --vpn-type RouteBased --address-prefixes 40.1.0.0/24 --client-protocol OpenVPN --radius-secret 111_aaa --radius-server 30.1.1.15 --aad-issuer https://sts.windows.net/00000-000000-00000-0000-000/ --aad-tenant https://login.microsoftonline.com/000 --aad-audience 0000-000 --root-cert-name root-cert --root-cert-data "root-cert.cer" --vpn-auth-type AAD Certificate Radius
   - name: Create a virtual network gateway. (autogenerated)
     text: |
         az network vnet-gateway create --gateway-type Vpn --location westus2 --name MyVnetGateway --no-wait --public-ip-addresses myVGPublicIPAddress --resource-group MyResourceGroup --sku Basic --vnet MyVnet --vpn-type PolicyBased
@@ -4583,7 +5515,7 @@ examples:
     text: |
         az network vnet-gateway ipsec-policy add -g MyResourceGroup --gateway-name MyGateway \\
             --dh-group DHGroup14 --ike-encryption AES256 --ike-integrity SHA384 --ipsec-encryption DES3 \\
-            --ipsec-integrity GCMAES256 --pfs-group PFS2048 --sa-lifetime 600 --sa-max-size 1024
+            --ipsec-integrity GCMAES256 --pfs-group PFS2048 --sa-lifetime 27000 --sa-max-size 102400000
 """
 
 helps['network vnet-gateway ipsec-policy clear'] = """
@@ -4860,7 +5792,7 @@ examples:
     text: |
         az network vpn-connection ipsec-policy add -g MyResourceGroup --connection-name MyConnection \\
             --dh-group DHGroup14 --ike-encryption AES256 --ike-integrity SHA384 --ipsec-encryption DES3 \\
-            --ipsec-integrity GCMAES256 --pfs-group PFS2048 --sa-lifetime 600 --sa-max-size 1024
+            --ipsec-integrity GCMAES256 --pfs-group PFS2048 --sa-lifetime 27000 --sa-max-size 102400000
 """
 
 helps['network vpn-connection ipsec-policy clear'] = """
@@ -4898,6 +5830,10 @@ short-summary: Reset a VPN connection shared key.
 examples:
   - name: Reset the shared key on a connection.
     text: az network vpn-connection shared-key reset -g MyResourceGroup --connection-name MyConnection --key-length 128
+  - name: Reset a VPN connection shared key. (autogenerated)
+    text: |
+        az network vpn-connection shared-key reset --connection-name MyConnection --key-length 128 --resource-group MyResourceGroup --subscription MySubscription
+    crafted: true
 """
 
 helps['network vpn-connection shared-key show'] = """
@@ -4946,7 +5882,7 @@ examples:
 
 helps['network vrouter'] = """
 type: group
-short-summary: Manage the virtual router.
+short-summary: Manage the virtual router. This feature supports both VirtualHub and VirtualRouter. Considering VirtualRouter is deprecated, we recommend to create VirtualRouter with --hosted-subnet instead
 """
 
 helps['network vrouter create'] = """
@@ -4957,11 +5893,26 @@ short-summary: Create a virtual router.
 helps['network vrouter update'] = """
 type: command
 short-summary: Update a virtual router.
+examples:
+  - name: Update a virtual router. (autogenerated)
+    text: |
+        az network vrouter update --name myvirtualrouter --resource-group myresourcegroup --tags super_secure no_80 no_22
+    crafted: true
+"""
+
+helps['network vrouter show'] = """
+type: command
+short-summary: Show a virtual router.
 """
 
 helps['network vrouter list'] = """
 type: command
 short-summary: List all virtual routers under a subscription or a resource group.
+"""
+
+helps['network vrouter delete'] = """
+type: command
+short-summary: Delete a virtual router under a resource group.
 """
 
 helps['network vrouter peering'] = """
@@ -4977,6 +5928,100 @@ short-summary: Create a virtual router peering.
 helps['network vrouter peering update'] = """
 type: command
 short-summary: Update a virtual router peering.
+"""
+
+helps['network vrouter peering list'] = """
+type: command
+short-summary: List all virtual router peerings under a resource group.
+"""
+
+helps['network vrouter peering show'] = """
+type: command
+short-summary: Show a virtual router peering
+"""
+
+helps['network vrouter peering delete'] = """
+type: command
+short-summary: Delete a virtual router peering.
+"""
+
+helps['network routeserver'] = """
+type: group
+short-summary: Manage the route server.
+"""
+
+helps['network routeserver create'] = """
+type: command
+short-summary: Create a route server.
+examples:
+  - name: Create a route server.
+    text: |
+      az network routeserver create --resource-group myresourcegroup --name myrouteserver --hosted-subnet my_subnet_id
+"""
+
+helps['network routeserver update'] = """
+type: command
+short-summary: Update a route server.
+examples:
+  - name: Update a route server.
+    text: |
+        az network routeserver update --name myrouteserver --resource-group myresourcegroup --tags super_secure no_80 no_22
+    crafted: true
+"""
+
+helps['network routeserver show'] = """
+type: command
+short-summary: Show a route server.
+"""
+
+helps['network routeserver list'] = """
+type: command
+short-summary: List all route servers under a subscription or a resource group.
+"""
+
+helps['network routeserver delete'] = """
+type: command
+short-summary: Delete a route server under a resource group.
+"""
+
+helps['network routeserver peering'] = """
+type: group
+short-summary: Manage the route server peering.
+"""
+
+helps['network routeserver peering create'] = """
+type: command
+short-summary: Create a route server peering.
+"""
+
+helps['network routeserver peering update'] = """
+type: command
+short-summary: Update a route server peering.
+"""
+
+helps['network routeserver peering list'] = """
+type: command
+short-summary: List all route server peerings under a resource group.
+"""
+
+helps['network routeserver peering show'] = """
+type: command
+short-summary: Show a route server peering
+"""
+
+helps['network routeserver peering delete'] = """
+type: command
+short-summary: Delete a route server peering.
+"""
+
+helps['network routeserver peering list-learned-routes'] = """
+type: command
+short-summary: List all routes the route server bgp connection has learned.
+"""
+
+helps['network routeserver peering list-advertised-routes'] = """
+type: command
+short-summary: List all routes the route server bgp connection is advertising to the specified peer.
 """
 
 helps['network watcher'] = """
@@ -5043,6 +6088,10 @@ examples:
       --test-config-name TCPTestConfig
       --protocol Tcp
       --tcp-port 2048
+  - name: Create a connection monitor. (autogenerated)
+    text: |
+        az network watcher connection-monitor create --endpoint-dest-address bing.com --endpoint-dest-name bing --endpoint-source-name "vm01" --endpoint-source-resource-id MyVM01ResourceID --location westus2 --name MyConnectionMonitorName --protocol Tcp --tcp-port 2048 --test-config-name TCPTestConfig
+    crafted: true
 """
 
 helps['network watcher connection-monitor delete'] = """
@@ -5107,33 +6156,35 @@ helps['network watcher connection-monitor endpoint add'] = """
 type: command
 short-summary: Add an endpoint to a connection monitor
 examples:
-  - name: Add an endpoint as destination
+  - name: Add an external address as a destination endpoint
     text: >
       az network watcher connection-monitor endpoint add
       --connection-monitor MyConnectionMonitor
       --location westus
-      --name MyEndpoint
+      --name MyExternalEndpoint
       --address "bing.com"
       --dest-test-groups DefaultTestGroup
-  - name: Add an endpoint as source
+      --type ExternalAddress
+  - name: Add an Azure VM as a source endpoint
     text: >
       az network watcher connection-monitor endpoint add
       --connection-monitor MyConnectionMonitor
       --location westus
-      --name MyEndpoint
+      --name MyVMEndpoint
       --resource-id MyVMResourceID
       --source-test-groups DefaultTestGroup
-  - name: Add an endpoint with filter
+      --type AzureVM
+  - name: Add a Subnet as a source endpoint with addresses excluded
     text: >
       az network watcher connection-monitor endpoint add
       --connection-monitor MyConnectionMonitor
       --location westus
-      --name MyEndpoint
-      --resource-id MyLogAnalysisWorkSpaceID
+      --name MySubnetEndpoint
+      --resource-id MySubnetID
       --source-test-groups DefaultTestGroup
-      --filter-type Include
-      --filter-item type=AgentAddress address=npmuser
-      --filter-item type=AgentAddress address=pypiuser
+      --type AzureSubnet
+      --address-exclude 10.0.0.25 10.0.0.30
+      --coverage-level BelowAverage
 """
 
 helps['network watcher connection-monitor endpoint remove'] = """
@@ -5158,11 +6209,21 @@ examples:
 helps['network watcher connection-monitor endpoint show'] = """
 type: command
 short-summary: Show an endpoint from a connection monitor
+examples:
+  - name: Show an endpoint from a connection monitor. (autogenerated)
+    text: |
+        az network watcher connection-monitor endpoint show --connection-monitor MyConnectionMonitor --location westus2 --name myconnectionmonitorendpoint --subscription MySubscription
+    crafted: true
 """
 
 helps['network watcher connection-monitor endpoint list'] = """
 type: command
 short-summary: List all endpoints form a connection monitor
+examples:
+  - name: List all endpoints form a connection monitor. (autogenerated)
+    text: |
+        az network watcher connection-monitor endpoint list --connection-monitor MyConnectionMonitor --location westus2
+    crafted: true
 """
 
 
@@ -5218,11 +6279,21 @@ examples:
 helps['network watcher connection-monitor test-configuration show'] = """
 type: command
 short-summary: Show a test configuration from a connection monitor
+examples:
+  - name: Show a test configuration from a connection monitor. (autogenerated)
+    text: |
+        az network watcher connection-monitor test-configuration show --connection-monitor MyConnectionMonitor --location westus2 --name MyConnectionMonitorTestConfiguration
+    crafted: true
 """
 
 helps['network watcher connection-monitor test-configuration list'] = """
 type: command
 short-summary: List all test configurations of a connection monitor
+examples:
+  - name: List all test configurations of a connection monitor. (autogenerated)
+    text: |
+        az network watcher connection-monitor test-configuration list --connection-monitor MyConnectionMonitor --location westus2
+    crafted: true
 """
 
 helps['network watcher connection-monitor test-group'] = """
@@ -5271,16 +6342,31 @@ examples:
 helps['network watcher connection-monitor test-group remove'] = """
 type: command
 short-summary: Remove test group from a connection monitor
+examples:
+  - name: Remove test group from a connection monitor. (autogenerated)
+    text: |
+        az network watcher connection-monitor test-group remove --connection-monitor MyConnectionMonitor --location westus2 --name MyConnectionMonitorTestGroup
+    crafted: true
 """
 
 helps['network watcher connection-monitor test-group show'] = """
 type: command
 short-summary: Show a test group of a connection monitor
+examples:
+  - name: Show a test group of a connection monitor. (autogenerated)
+    text: |
+        az network watcher connection-monitor test-group show --connection-monitor MyConnectionMonitor --location westus2 --name MyConnectionMonitorTestGroup --subscription MySubscription
+    crafted: true
 """
 
 helps['network watcher connection-monitor test-group list'] = """
 type: command
 short-summary: List all test groups of a connection monitor
+examples:
+  - name: List all test groups of a connection monitor. (autogenerated)
+    text: |
+        az network watcher connection-monitor test-group list --connection-monitor MyConnectionMonitor --location westus2
+    crafted: true
 """
 
 helps['network watcher connection-monitor output'] = """
@@ -5329,12 +6415,89 @@ examples:
     text: az network watcher flow-log configure -g MyResourceGroup --enabled false --nsg MyNsg
 """
 
+helps['network watcher flow-log create'] = """
+type: command
+short-summary: Create a flow log on a network security group.
+examples:
+  - name: Create a flow log with Network Security Group name
+    text: >
+      az network watcher flow-log create
+      --location westus
+      --resource-group MyResourceGroup
+      --name MyFlowLog
+      --nsg MyNetworkSecurityGroupName
+      --storage-account account
+  - name: Create a flow log with Network Security Group ID (could be in other resource group)
+    text: >
+      az network watcher flow-log create
+      --location westus
+      --name MyFlowLog
+      --nsg MyNetworkSecurityGroupID
+      --storage-account account
+"""
+
+helps['network watcher flow-log list'] = """
+type: command
+short-summary: List all flow log resources for the specified Network Watcher
+examples:
+  - name: List all flow log resources for the specified Network Watcher. (autogenerated)
+    text: |
+        az network watcher flow-log list --location westus2
+    crafted: true
+"""
+
+helps['network watcher flow-log delete'] = """
+type: command
+short-summary: Delete the specified flow log resource.
+examples:
+  - name: Delete the specified flow log resource. (autogenerated)
+    text: |
+        az network watcher flow-log delete --location westus2 --name MyFlowLogger
+    crafted: true
+"""
+
 helps['network watcher flow-log show'] = """
 type: command
 short-summary: Get the flow log configuration of a network security group.
 examples:
-  - name: Show NSG flow logs.
+  - name: Show NSG flow logs. (Deprecated)
     text: az network watcher flow-log show -g MyResourceGroup --nsg MyNsg
+  - name: Show NSG flow logs with Azure Resource Management formatted.
+    text: az network watcher flow-log show --location MyNetworkWatcher --name MyFlowLog
+"""
+
+helps['network watcher flow-log update'] = """
+type: command
+short-summary: Update the flow log configuration of a network security group
+examples:
+  - name: Update storage account with name to let resource group identify the storage account and network watcher
+    text: >
+      az network watcher flow-log update
+      --location westus
+      --resource-group MyResourceGroup
+      --name MyFlowLog
+      --storage-account accountname
+  - name: Update storage account with ID to let location identify the network watcher
+    text: >
+      az network watcher flow-log update
+      --location westus
+      --resource-group MyResourceGroup
+      --name MyFlowLog
+      --storage-account accountid
+  - name: Update Network Security Group on another resource group
+    text: >
+      az network watcher flow-log update
+      --location westus
+      --resource-group MyAnotherResourceGroup
+      --name MyFlowLog
+      --nsg MyNSG
+  - name: Update Workspace on another resource group
+    text: >
+      az network watcher flow-log update
+      --location westus
+      --resource-group MyAnotherResourceGroup
+      --name MyFlowLog
+      --workspace MyAnotherLogAnalyticWorkspace
 """
 
 helps['network watcher list'] = """
@@ -5414,6 +6577,10 @@ short-summary: Delete a packet capture session.
 examples:
   - name: Delete a packet capture session. This only deletes the session and not the capture file.
     text: az network watcher packet-capture delete -n packetCaptureName -l westcentralus
+  - name: Delete a packet capture session. (autogenerated)
+    text: |
+        az network watcher packet-capture delete --location westcentralus --name packetCaptureName --subscription MySubscription
+    crafted: true
 """
 
 helps['network watcher packet-capture list'] = """
@@ -5422,6 +6589,10 @@ short-summary: List all packet capture sessions within a resource group.
 examples:
   - name: List all packet capture sessions within a region.
     text: az network watcher packet-capture list -l westus
+  - name: List all packet capture sessions within a resource group (autogenerated)
+    text: |
+        az network watcher packet-capture list --location westus --subscription MySubscription
+    crafted: true
 """
 
 helps['network watcher packet-capture show'] = """
@@ -5602,6 +6773,11 @@ examples:
 helps['network list-service-aliases'] = """
 type: command
 short-summary: List available service aliases in the region which can be used for Service Endpoint Policies.
+examples:
+  - name: List available service aliases in the region which can be used for Service Endpoint Policies. (autogenerated)
+    text: |
+        az network list-service-aliases --location westus2
+    crafted: true
 """
 
 helps['network bastion'] = """
@@ -5612,11 +6788,21 @@ short-summary: Manage Azure bastion host.
 helps['network bastion create'] = """
 type: command
 short-summary: Create a Azure bastion host machine.
+examples:
+  - name: Create a Azure bastion host machine. (autogenerated)
+    text: |
+        az network bastion create --location westus2 --name MyBastionHost --public-ip-address MyPublicIpAddress --resource-group MyResourceGroup --vnet-name MyVnet
+    crafted: true
 """
 
 helps['network bastion delete'] = """
 type: command
 short-summary: Delete a Azure bastion host machine.
+examples:
+  - name: Delete a Azure bastion host machine. (autogenerated)
+    text: |
+        az network bastion delete --name MyBastionHost --resource-group MyResourceGroup
+    crafted: true
 """
 
 helps['network bastion list'] = """
@@ -5627,4 +6813,130 @@ short-summary: List all Azure bastion host machines.
 helps['network bastion show'] = """
 type: command
 short-summary: Show a Azure bastion host machine.
+examples:
+  - name: Show a Azure bastion host machine. (autogenerated)
+    text: |
+        az network bastion show --name MyBastionHost --resource-group MyResourceGroup
+    crafted: true
+"""
+
+helps['network security-partner-provider'] = """
+type: group
+short-summary: Manage Azure security partner provider.
+"""
+
+helps['network security-partner-provider create'] = """
+type: command
+short-summary: Create a Azure security partner provider.
+"""
+
+helps['network security-partner-provider update'] = """
+type: command
+short-summary: Update a Azure security partner provider.
+"""
+
+helps['network security-partner-provider delete'] = """
+type: command
+short-summary: Delete a Azure security partner provider.
+"""
+
+helps['network security-partner-provider list'] = """
+type: command
+short-summary: List all Azure security partner provider.
+"""
+
+helps['network security-partner-provider show'] = """
+type: command
+short-summary: Show a Azure security partner provider.
+"""
+
+helps['network virtual-appliance'] = """
+type: group
+short-summary: Manage Azure Network Virtual Appliance.
+"""
+
+helps['network virtual-appliance create'] = """
+type: command
+short-summary: Create an Azure network virtual appliance.
+examples:
+  - name: Create an Azure network virtual appliance.
+    text: |
+        az network virtual-appliance create -n MyName -g MyRG --vhub {vhubID} --vendor "barracudasdwanrelease" --scale-unit 2 -v latest --asn 10000 --init-config "echo $hello" --boot-blobs {blobUrl1} {blobUrl2} --cloud-blobs {blobUrl3} {blobUrl4}
+"""
+
+helps['network virtual-appliance update'] = """
+type: command
+short-summary: Update an Azure network virtual appliance.
+examples:
+  - name: Update an Azure network virtual appliance.
+    text: |
+        az network virtual-appliance update -n MyName -g MyRG --asn 20000 --init-config "echo $hello"
+"""
+
+helps['network virtual-appliance show'] = """
+type: command
+short-summary: Show the detail of an Azure network virtual appliance.
+"""
+
+helps['network virtual-appliance list'] = """
+type: command
+short-summary: List all Azure network virtual appliance.
+"""
+
+helps['network virtual-appliance delete'] = """
+type: command
+short-summary: Delete an Azure network virtual appliance.
+"""
+
+helps['network virtual-appliance site'] = """
+type: group
+short-summary: Manage Azure Network Virtual Appliance Site.
+"""
+
+helps['network virtual-appliance site create'] = """
+type: command
+short-summary: Create an Azure network virtual appliance site.
+examples:
+  - name: Create an Azure network virtual appliance site.
+    text: |
+        az network virtual-appliance site create -n MyName -g MyRG --appliance-name MyAppliance --address-prefix 10.0.0.0/24 --allow --default --optimize
+"""
+
+helps['network virtual-appliance site update'] = """
+type: command
+short-summary: Update an Azure network virtual appliance site.
+examples:
+  - name: Update an Azure network virtual appliance site.
+    text: |
+        az network virtual-appliance site update -n MyName -g MyRG --appliance-name MyAppliance --address-prefix 10.0.0.0/24 --allow false --default false --optimize false
+"""
+
+helps['network virtual-appliance site show'] = """
+type: command
+short-summary: Show the detail of an Azure network virtual appliance site.
+"""
+
+helps['network virtual-appliance site list'] = """
+type: command
+short-summary: List all Azure network virtual appliance site.
+"""
+
+helps['network virtual-appliance site delete'] = """
+type: command
+short-summary: Delete an Azure network virtual appliance site.
+"""
+
+helps['network virtual-appliance sku'] = """
+type: group
+short-summary: Manage Azure Network Virtual Appliance Sku.
+"""
+
+helps['network virtual-appliance sku show'] = """
+type: command
+short-summary: Show the detail of an Azure network virtual appliance sku.
+"""
+
+helps['network virtual-appliance sku list'] = """
+type: command
+short-summary: List all Azure network virtual appliance sku.
 """

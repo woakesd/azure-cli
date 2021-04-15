@@ -9,7 +9,7 @@
 # Bash script to install the Azure CLI
 #
 INSTALL_SCRIPT_URL="https://azurecliprod.blob.core.windows.net/install.py"
-INSTALL_SCRIPT_SHA256=8835ac5023e292b9c3afa44f7e9a2c0058c56789114891fb921ee85fbc9c2002
+INSTALL_SCRIPT_SHA256=c5107b96cfe881c46c8d8d9f401fcf931aab2b769a20fda58626b6e6e907219b
 _TTY=/dev/tty
 
 install_script=$(mktemp -t azure_cli_install_tmp_XXXXXX) || exit

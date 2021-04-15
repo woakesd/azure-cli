@@ -15,12 +15,9 @@ interactions:
       ParameterSetName:
       - -g -n
       User-Agent:
-      - python/3.7.4 (Windows-10-10.0.18362-SP0) msrest/0.6.10 msrest_azure/0.6.2
-        azure-mgmt-storage/7.0.0 Azure-SDK-For-Python AZURECLI/2.0.78
-      accept-language:
-      - en-US
+      - AZURECLI/2.19.1 azsdk-python-azure-mgmt-storage/17.0.0 Python/3.7.4 (Windows-10-10.0.19041-SP0)
     method: POST
-    uri: https://management.azure.com/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.Storage/storageAccounts/clitest000002/listKeys?api-version=2019-06-01
+    uri: https://management.azure.com/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.Storage/storageAccounts/clitest000002/listKeys?api-version=2021-01-01&$expand=kerb
   response:
     body:
       string: '{"keys":[{"keyName":"key1","value":"veryFakedStorageAccountKey==","permissions":"FULL"},{"keyName":"key2","value":"veryFakedStorageAccountKey==","permissions":"FULL"}]}'
@@ -32,7 +29,7 @@ interactions:
       content-type:
       - application/json
       date:
-      - Fri, 27 Dec 2019 04:36:32 GMT
+      - Wed, 24 Feb 2021 12:33:59 GMT
       expires:
       - '-1'
       pragma:
@@ -47,8 +44,8 @@ interactions:
       - Accept-Encoding
       x-content-type-options:
       - nosniff
-      x-ms-ratelimit-remaining-subscription-writes:
-      - '1197'
+      x-ms-ratelimit-remaining-subscription-resource-requests:
+      - '11999'
     status:
       code: 200
       message: OK
@@ -66,19 +63,16 @@ interactions:
       Content-Length:
       - '19'
       Content-Type:
-      - application/json; charset=utf-8
+      - application/json
       ParameterSetName:
       - -g -n --key
       User-Agent:
-      - python/3.7.4 (Windows-10-10.0.18362-SP0) msrest/0.6.10 msrest_azure/0.6.2
-        azure-mgmt-storage/7.0.0 Azure-SDK-For-Python AZURECLI/2.0.78
-      accept-language:
-      - en-US
+      - AZURECLI/2.19.1 azsdk-python-azure-mgmt-storage/17.0.0 Python/3.7.4 (Windows-10-10.0.19041-SP0)
     method: POST
-    uri: https://management.azure.com/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.Storage/storageAccounts/clitest000002/regenerateKey?api-version=2019-06-01
+    uri: https://management.azure.com/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.Storage/storageAccounts/clitest000002/regenerateKey?api-version=2021-01-01
   response:
     body:
-      string: '{"keys":[{"keyName":"key1","value":"6QJvUFiaM0b9VliMQnhOaHWjjShsM01tWv19n0JyHICxSmnm6qDDJ6J0asyQqXP76UUcfyCHwtInUUzHy9yySQ==","permissions":"FULL"},{"keyName":"key2","value":"veryFakedStorageAccountKey==","permissions":"FULL"}]}'
+      string: '{"keys":[{"keyName":"key1","value":"pk4yS81wGLqO+x9a6ZO9BoXjYXkm4WEcu+0MrAp7M5gR20VNp6IHKbImZqtKrFHz38TOfyr/3cu2MJW4V98ezw==","permissions":"FULL"},{"keyName":"key2","value":"veryFakedStorageAccountKey==","permissions":"FULL"}]}'
     headers:
       cache-control:
       - no-cache
@@ -87,7 +81,7 @@ interactions:
       content-type:
       - application/json
       date:
-      - Fri, 27 Dec 2019 04:36:33 GMT
+      - Wed, 24 Feb 2021 12:34:00 GMT
       expires:
       - '-1'
       pragma:
@@ -103,7 +97,7 @@ interactions:
       x-content-type-options:
       - nosniff
       x-ms-ratelimit-remaining-subscription-writes:
-      - '1196'
+      - '1199'
     status:
       code: 200
       message: OK
@@ -121,19 +115,16 @@ interactions:
       Content-Length:
       - '19'
       Content-Type:
-      - application/json; charset=utf-8
+      - application/json
       ParameterSetName:
       - -g -n --key
       User-Agent:
-      - python/3.7.4 (Windows-10-10.0.18362-SP0) msrest/0.6.10 msrest_azure/0.6.2
-        azure-mgmt-storage/7.0.0 Azure-SDK-For-Python AZURECLI/2.0.78
-      accept-language:
-      - en-US
+      - AZURECLI/2.19.1 azsdk-python-azure-mgmt-storage/17.0.0 Python/3.7.4 (Windows-10-10.0.19041-SP0)
     method: POST
-    uri: https://management.azure.com/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.Storage/storageAccounts/clitest000002/regenerateKey?api-version=2019-06-01
+    uri: https://management.azure.com/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/clitest.rg000001/providers/Microsoft.Storage/storageAccounts/clitest000002/regenerateKey?api-version=2021-01-01
   response:
     body:
-      string: '{"keys":[{"keyName":"key1","value":"6QJvUFiaM0b9VliMQnhOaHWjjShsM01tWv19n0JyHICxSmnm6qDDJ6J0asyQqXP76UUcfyCHwtInUUzHy9yySQ==","permissions":"FULL"},{"keyName":"key2","value":"zggWvfM0EGIlW477bw+GNd5rplHBCZ1yn+WUk/UamDdwYDX58uqZClrisq7zVf0zxcC2xMGygCFsHy30DqhqBA==","permissions":"FULL"}]}'
+      string: '{"keys":[{"keyName":"key1","value":"pk4yS81wGLqO+x9a6ZO9BoXjYXkm4WEcu+0MrAp7M5gR20VNp6IHKbImZqtKrFHz38TOfyr/3cu2MJW4V98ezw==","permissions":"FULL"},{"keyName":"key2","value":"vCNvTG+1jT0LtAasXh+pM0h68eL8f3MgLFR7loZqzvr8/sarJ2aGASyubIGrIx/N193nF+xLNgwuof8XO+Fm2Q==","permissions":"FULL"}]}'
     headers:
       cache-control:
       - no-cache
@@ -142,7 +133,7 @@ interactions:
       content-type:
       - application/json
       date:
-      - Fri, 27 Dec 2019 04:36:34 GMT
+      - Wed, 24 Feb 2021 12:34:01 GMT
       expires:
       - '-1'
       pragma:
@@ -158,7 +149,7 @@ interactions:
       x-content-type-options:
       - nosniff
       x-ms-ratelimit-remaining-subscription-writes:
-      - '1197'
+      - '1198'
     status:
       code: 200
       message: OK

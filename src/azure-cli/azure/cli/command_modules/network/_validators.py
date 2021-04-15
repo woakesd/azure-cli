@@ -19,7 +19,7 @@ from azure.cli.core.commands.template_create import get_folded_parameter_validat
 from azure.cli.core.commands.client_factory import get_subscription_id, get_mgmt_service_client
 from azure.cli.core.commands.validators import validate_parameter_set
 from azure.cli.core.profiles import ResourceType
-
+from azure.cli.core.azclierror import RequiredArgumentMissingError
 
 logger = get_logger(__name__)
 
@@ -74,7 +74,6 @@ def get_asg_validator(loader, dest):
 
 
 def get_subscription_list_validator(dest, model_class):
-
     def _validate_subscription_list(cmd, namespace):
         val = getattr(namespace, dest, None)
         if not val:
@@ -113,8 +112,12 @@ def get_vnet_validator(dest):
     return _validate_vnet_name_or_id
 
 
-def validate_ddos_name_or_id(cmd, namespace):
+def _validate_vpn_gateway_generation(namespace):
+    if namespace.gateway_type != 'Vpn' and namespace.vpn_gateway_generation:
+        raise CLIError('vpn_gateway_generation should not be provided if gateway_type is not Vpn.')
 
+
+def validate_ddos_name_or_id(cmd, namespace):
     if namespace.ddos_protection_plan:
         from msrestazure.tools import is_valid_resource_id, resource_id
         if not is_valid_resource_id(namespace.ddos_protection_plan):
@@ -212,7 +215,6 @@ def validate_address_pool_name_or_id(cmd, namespace):
 
 
 def validate_address_prefixes(namespace):
-
     if namespace.subnet_type != 'new':
         validate_parameter_set(namespace,
                                required=[],
@@ -235,6 +237,12 @@ def validate_cert(namespace):
         namespace.cert_data = read_base_64_file(namespace.cert_data)
 
 
+def validate_trusted_client_cert(namespace):
+    if namespace.client_cert_data is None or namespace.client_cert_name is None:
+        raise RequiredArgumentMissingError('To use this cmd, you must specify both name and data')
+    namespace.client_cert_data = read_base_64_file(namespace.client_cert_data)
+
+
 def validate_ssl_cert(namespace):
     params = [namespace.cert_data, namespace.cert_password]
     if all([not x for x in params]) and not namespace.key_vault_secret_id:
@@ -245,9 +253,9 @@ def validate_ssl_cert(namespace):
         if namespace.key_vault_secret_id:
             return
         # cert supplied -- use HTTPS
-        if not all(params):
+        if not namespace.cert_data:
             raise CLIError(
-                None, 'To use SSL certificate, you must specify both the filename and password')
+                None, 'To use SSL certificate, you must specify both the filename')
 
         # extract the certificate data from the provided file
         namespace.cert_data = read_base_64_file(namespace.cert_data)
@@ -286,7 +294,7 @@ def validate_dns_record_type(namespace):
             return
 
 
-def validate_application_gateway_identity(cmd, namespace):
+def validate_user_assigned_identity(cmd, namespace):
     from msrestazure.tools import is_valid_resource_id, resource_id
 
     if namespace.user_assigned_identity and not is_valid_resource_id(namespace.user_assigned_identity):
@@ -373,6 +381,7 @@ def validate_waf_policy(cmd, namespace):
 def bandwidth_validator_factory(mbps=True):
     def validator(namespace):
         return validate_circuit_bandwidth(namespace, mbps=mbps)
+
     return validator
 
 
@@ -680,7 +689,8 @@ def get_servers_validator(camel_case=False):
                 servers.append({'ipAddress' if camel_case else 'ip_address': item})
             except socket.error:  # pylint:disable=no-member
                 servers.append({'fqdn': item})
-        namespace.servers = servers
+        namespace.servers = servers if servers else None
+
     return validate_servers
 
 
@@ -704,6 +714,17 @@ def validate_target_listener(cmd, namespace):
             type='applicationGateways',
             child_type_1='httpListeners',
             child_name_1=namespace.target_listener)
+
+
+def validate_private_dns_zone(cmd, namespace):
+    from msrestazure.tools import is_valid_resource_id, resource_id
+    if namespace.private_dns_zone and not is_valid_resource_id(namespace.private_dns_zone):
+        namespace.private_dns_zone = resource_id(
+            subscription=get_subscription_id(cmd.cli_ctx),
+            resource_group=namespace.resource_group_name,
+            name=namespace.private_dns_zone,
+            namespace='Microsoft.Network',
+            type='privateDnsZones')
 
 
 def get_virtual_network_validator(has_type_field=False, allow_none=False, allow_new=False,
@@ -733,7 +754,7 @@ def get_virtual_network_validator(has_type_field=False, allow_none=False, allow_
 # COMMAND NAMESPACE VALIDATORS
 
 def process_ag_listener_create_namespace(cmd, namespace):  # pylint: disable=unused-argument
-    from msrestazure.tools import is_valid_resource_id
+    from msrestazure.tools import is_valid_resource_id, resource_id
     if namespace.frontend_ip and not is_valid_resource_id(namespace.frontend_ip):
         namespace.frontend_ip = _generate_ag_subproperty_id(
             cmd.cli_ctx, namespace, 'frontendIpConfigurations', namespace.frontend_ip)
@@ -747,8 +768,12 @@ def process_ag_listener_create_namespace(cmd, namespace):  # pylint: disable=unu
             cmd.cli_ctx, namespace, 'sslCertificates', namespace.ssl_cert)
 
     if namespace.firewall_policy and not is_valid_resource_id(namespace.firewall_policy):
-        namespace.firewall_policy = _generate_ag_subproperty_id(
-            cmd.cli_ctx, namespace, 'firewallPolicy', namespace.firewall_policy
+        namespace.firewall_policy = resource_id(
+            subscription=get_subscription_id(cmd.cli_ctx),
+            resource_group=namespace.resource_group_name,
+            namespace='Microsoft.Network',
+            type='ApplicationGatewayWebApplicationFirewallPolicies',
+            name=namespace.firewall_policy
         )
 
 
@@ -761,11 +786,13 @@ def process_ag_http_settings_create_namespace(cmd, namespace):  # pylint: disabl
         def _validate_name_or_id(val):
             return val if is_valid_resource_id(val) else _generate_ag_subproperty_id(
                 cmd.cli_ctx, namespace, 'authenticationCertificates', val)
+
         namespace.auth_certs = [_validate_name_or_id(x) for x in namespace.auth_certs]
     if namespace.root_certs:
         def _validate_name_or_id(val):
             return val if is_valid_resource_id(val) else _generate_ag_subproperty_id(
                 cmd.cli_ctx, namespace, 'trustedRootCertificates', val)
+
         namespace.root_certs = [_validate_name_or_id(x) for x in namespace.root_certs]
 
 
@@ -866,7 +893,7 @@ def process_ag_create_namespace(cmd, namespace):
     validate_tags(namespace)
     validate_custom_error_pages(namespace)
     validate_waf_policy(cmd, namespace)
-    validate_application_gateway_identity(cmd, namespace)
+    validate_user_assigned_identity(cmd, namespace)
 
 
 def process_auth_create_namespace(cmd, namespace):
@@ -926,6 +953,33 @@ def process_lb_frontend_ip_namespace(cmd, namespace):
         get_public_ip_validator()(cmd, namespace)
 
 
+def process_cross_region_lb_create_namespace(cmd, namespace):
+    get_default_location_from_resource_group(cmd, namespace)
+    validate_tags(namespace)
+
+    # validation for internet facing load balancer
+    get_public_ip_validator(has_type_field=True, allow_none=True, allow_new=True)(cmd, namespace)
+
+    if namespace.public_ip_dns_name and namespace.public_ip_address_type != 'new':
+        raise CLIError(
+            'specify --public-ip-dns-name only if creating a new public IP address.')
+
+
+def process_cross_region_lb_frontend_ip_namespace(cmd, namespace):
+    from azure.mgmt.core.tools import is_valid_resource_id, resource_id
+
+    if namespace.public_ip_prefix:
+        if not is_valid_resource_id(namespace.public_ip_prefix):
+            namespace.public_ip_prefix = resource_id(
+                subscription=get_subscription_id(cmd.cli_ctx),
+                resource_group=namespace.resource_group_name,
+                namespace='Microsoft.Network',
+                type='publicIpPrefixes',
+                name=namespace.public_ip_prefix)
+
+    get_public_ip_validator()(cmd, namespace)
+
+
 def process_local_gateway_create_namespace(cmd, namespace):
     ns = namespace
     get_default_location_from_resource_group(cmd, ns)
@@ -957,6 +1011,15 @@ def process_public_ip_create_namespace(cmd, namespace):
     validate_public_ip_prefix(cmd, namespace)
     validate_ip_tags(cmd, namespace)
     validate_tags(namespace)
+    _inform_coming_breaking_change_for_public_ip(namespace)
+
+
+def _inform_coming_breaking_change_for_public_ip(namespace):
+    if namespace.sku == 'Standard' and not namespace.zone:
+        logger.warning('[Coming breaking change] In the coming release, the default behavior will be changed as follows'
+                       ' when sku is Standard and zone is not provided:'
+                       ' For zonal regions, you will get a zone-redundant IP indicated by zones:["1","2","3"];'
+                       ' For non-zonal regions, you will get a non zone-redundant IP indicated by zones:null.')
 
 
 def process_route_table_create_namespace(cmd, namespace):
@@ -1028,6 +1091,7 @@ def process_vnet_create_namespace(cmd, namespace):
     get_default_location_from_resource_group(cmd, namespace)
     validate_ddos_name_or_id(cmd, namespace)
     validate_tags(namespace)
+    get_nsg_validator()(cmd, namespace)
 
     if namespace.subnet_prefix and not namespace.subnet_name:
         if cmd.supported_api_version(min_api='2018-08-01'):
@@ -1045,10 +1109,18 @@ def process_vnet_create_namespace(cmd, namespace):
         namespace.subnet_prefix = [subnet_prefix] if cmd.supported_api_version(min_api='2018-08-01') else subnet_prefix
 
 
+def _validate_cert(namespace, param_name):
+    attr = getattr(namespace, param_name)
+    if attr and os.path.isfile(attr):
+        setattr(namespace, param_name, read_base_64_file(attr))
+
+
 def process_vnet_gateway_create_namespace(cmd, namespace):
     ns = namespace
     get_default_location_from_resource_group(cmd, ns)
     validate_tags(ns)
+
+    _validate_vpn_gateway_generation(ns)
 
     get_virtual_network_validator()(cmd, ns)
 
@@ -1065,12 +1137,17 @@ def process_vnet_gateway_create_namespace(cmd, namespace):
         raise ValueError(
             'incorrect usage: --asn ASN [--peer-weight WEIGHT --bgp-peering-address IP ]')
 
+    if cmd.supported_api_version(min_api='2020-11-01'):
+        _validate_cert(namespace, 'root_cert_data')
+
 
 def process_vnet_gateway_update_namespace(cmd, namespace):
     ns = namespace
     get_virtual_network_validator()(cmd, ns)
     get_public_ip_validator()(cmd, ns)
     validate_tags(ns)
+    if cmd.supported_api_version(min_api='2020-11-01'):
+        _validate_cert(namespace, 'root_cert_data')
     public_ip_count = len(ns.public_ip_address or [])
     if public_ip_count > 2:
         raise CLIError('Specify a single public IP to create an active-standby gateway or two '
@@ -1203,7 +1280,6 @@ def process_nw_cm_v1_create_namespace(cmd, namespace):
 
 
 def process_nw_cm_v2_create_namespace(cmd, namespace):
-
     if namespace.location is None:  # location is None only occurs in creating a V2 connection monitor
         endpoint_source_resource_id = namespace.endpoint_source_resource_id
 
@@ -1379,6 +1455,66 @@ def process_nw_test_connectivity_namespace(cmd, namespace):
         namespace.headers = headers
 
 
+def process_nw_flow_log_create_namespace(cmd, namespace):
+    """
+    Flow Log is the sub-resource of Network Watcher, they must be in the same region and subscription.
+    """
+    from msrestazure.tools import is_valid_resource_id, resource_id
+
+    # for both create and update
+    if namespace.resource_group_name is None:
+        err_tpl, err_body = 'usage error: use {} instead.', None
+
+        if namespace.nsg and not is_valid_resource_id(namespace.nsg):
+            err_body = '--nsg ID / --nsg NSD_NAME --resource-group NSD_RESOURCE_GROUP'
+
+        if namespace.storage_account and not is_valid_resource_id(namespace.storage_account):
+            err_body = '--storage-account ID / --storage-account NAME --resource_group STORAGE_ACCOUNT_RESOURCE_GROUP'
+
+        if namespace.traffic_analytics_workspace and not is_valid_resource_id(namespace.traffic_analytics_workspace):
+            err_body = '--workspace ID / --workspace NAME --resource-group WORKSPACE_RESOURCE_GROUP'
+
+        if err_body is not None:
+            raise CLIError(err_tpl.format(err_body))
+
+    # for both create and update
+    if namespace.nsg and not is_valid_resource_id(namespace.nsg):
+        kwargs = {
+            'subscription': get_subscription_id(cmd.cli_ctx),
+            'resource_group': namespace.resource_group_name,
+            'namespace': 'Microsoft.Network',
+            'type': 'networkSecurityGroups',
+            'name': namespace.nsg
+        }
+        namespace.nsg = resource_id(**kwargs)
+
+    # for both create and update
+    if namespace.storage_account and not is_valid_resource_id(namespace.storage_account):
+        kwargs = {
+            'subscription': get_subscription_id(cmd.cli_ctx),
+            'resource_group': namespace.resource_group_name,
+            'namespace': 'Microsoft.Storage',
+            'type': 'storageAccounts',
+            'name': namespace.storage_account
+        }
+        namespace.storage_account = resource_id(**kwargs)
+
+    # for both create and update
+    if namespace.traffic_analytics_workspace and not is_valid_resource_id(namespace.traffic_analytics_workspace):
+        kwargs = {
+            'subscription': get_subscription_id(cmd.cli_ctx),
+            'resource_group': namespace.resource_group_name,
+            'namespace': 'Microsoft.OperationalInsights',
+            'type': 'workspaces',
+            'name': namespace.traffic_analytics_workspace
+        }
+        namespace.traffic_analytics_workspace = resource_id(**kwargs)
+
+    get_network_watcher_from_location(remove=False)(cmd, namespace)
+
+    validate_tags(namespace)
+
+
 def process_nw_flow_log_set_namespace(cmd, namespace):
     from msrestazure.tools import is_valid_resource_id, resource_id
     if namespace.storage_account and not is_valid_resource_id(namespace.storage_account):
@@ -1403,17 +1539,22 @@ def process_nw_flow_log_show_namespace(cmd, namespace):
     from msrestazure.tools import is_valid_resource_id, resource_id
     from azure.cli.core.commands.arm import get_arm_resource_by_id
 
-    if not is_valid_resource_id(namespace.nsg):
-        namespace.nsg = resource_id(
-            subscription=get_subscription_id(cmd.cli_ctx),
-            resource_group=namespace.resource_group_name,
-            namespace='Microsoft.Network',
-            type='networkSecurityGroups',
-            name=namespace.nsg)
+    if hasattr(namespace, 'nsg') and namespace.nsg is not None:
+        if not is_valid_resource_id(namespace.nsg):
+            namespace.nsg = resource_id(
+                subscription=get_subscription_id(cmd.cli_ctx),
+                resource_group=namespace.resource_group_name,
+                namespace='Microsoft.Network',
+                type='networkSecurityGroups',
+                name=namespace.nsg)
 
-    nsg = get_arm_resource_by_id(cmd.cli_ctx, namespace.nsg)
-    namespace.location = nsg.location  # pylint: disable=no-member
-    get_network_watcher_from_location(remove=True)(cmd, namespace)
+        nsg = get_arm_resource_by_id(cmd.cli_ctx, namespace.nsg)
+        namespace.location = nsg.location  # pylint: disable=no-member
+        get_network_watcher_from_location(remove=True)(cmd, namespace)
+    elif namespace.flow_log_name is not None and namespace.location is not None:
+        get_network_watcher_from_location(remove=False)(cmd, namespace)
+    else:
+        raise CLIError('usage error: --nsg NSG | --location NETWORK_WATCHER_LOCATION --name FLOW_LOW_NAME')
 
 
 def process_nw_topology_namespace(cmd, namespace):
@@ -1626,7 +1767,6 @@ def process_lb_outbound_rule_namespace(cmd, namespace):
 
 
 def process_list_delegations_namespace(cmd, namespace):
-
     if not namespace.resource_group_name and not namespace.location:
         raise CLIError('usage error: --location LOCATION | --resource-group NAME [--location LOCATION]')
 
@@ -1660,7 +1800,6 @@ def validate_ag_address_pools(cmd, namespace):
 
 
 def validate_custom_error_pages(namespace):
-
     if not namespace.custom_error_pages:
         return
 
@@ -1675,7 +1814,6 @@ def validate_custom_error_pages(namespace):
 
 
 def validate_custom_headers(namespace):
-
     if not namespace.monitor_custom_headers:
         return
 
@@ -1691,7 +1829,6 @@ def validate_custom_headers(namespace):
 
 
 def validate_status_code_ranges(namespace):
-
     if not namespace.status_code_ranges:
         return
 
@@ -1713,7 +1850,6 @@ def validate_status_code_ranges(namespace):
 
 
 def validate_subnet_ranges(namespace):
-
     if not namespace.subnets:
         return
 
@@ -1774,4 +1910,75 @@ def get_header_configuration_validator(dest):
                 'header_value': value
             })
         setattr(namespace, dest, results)
+
     return validator
+
+
+def process_private_link_resource_id_argument(cmd, namespace):
+    if all([namespace.resource_group_name,
+            namespace.name,
+            namespace.resource_provider]):
+        logger.warning("Resource ID will be ignored since other three arguments have been provided.")
+        del namespace.id
+        return
+
+    if not (namespace.id or all([namespace.resource_group_name,
+                                 namespace.name,
+                                 namespace.resource_provider])):
+        raise CLIError("usage error: --id / -g -n --type")
+
+    from msrestazure.tools import is_valid_resource_id, parse_resource_id
+    if not is_valid_resource_id(namespace.id):
+        raise CLIError("Resource ID is not invalid. Please check it.")
+    split_resource_id = parse_resource_id(namespace.id)
+    cmd.cli_ctx.data['subscription_id'] = split_resource_id['subscription']
+    namespace.resource_group_name = split_resource_id['resource_group']
+    namespace.name = split_resource_id['name']
+    namespace.resource_provider = '{}/{}'.format(split_resource_id['namespace'], split_resource_id['type'])
+    del namespace.id
+
+
+def process_private_endpoint_connection_id_argument(cmd, namespace):
+    from azure.cli.core.util import parse_proxy_resource_id
+    if all([namespace.resource_group_name,
+            namespace.name,
+            namespace.resource_provider,
+            namespace.resource_name]):
+        logger.warning("Resource ID will be ignored since other three arguments have been provided.")
+        del namespace.connection_id
+        return
+
+    if not (namespace.connection_id or all([namespace.resource_group_name,
+                                            namespace.name,
+                                            namespace.resource_provider,
+                                            namespace.resource_name])):
+        raise CLIError("usage error: --id / -g -n --type --resource-name")
+
+    result = parse_proxy_resource_id(namespace.connection_id)
+    cmd.cli_ctx.data['subscription_id'] = result['subscription']
+    namespace.resource_group_name = result['resource_group']
+    namespace.resource_name = result['name']
+    namespace.resource_provider = '{}/{}'.format(result['namespace'], result['type'])
+    namespace.name = result['child_name_1']
+    del namespace.connection_id
+
+
+def process_vnet_name_or_id(cmd, namespace):
+    from azure.mgmt.core.tools import is_valid_resource_id, resource_id
+    if namespace.vnet and not is_valid_resource_id(namespace.vnet):
+        namespace.vnet = resource_id(
+            subscription=get_subscription_id(cmd.cli_ctx),
+            resource_group=namespace.resource_group_name,
+            namespace='Microsoft.Network',
+            type='virtualNetworks',
+            name=namespace.vnet)
+
+
+def process_appgw_waf_policy_update(cmd, namespace):    # pylint: disable=unused-argument
+    rule_group_name = namespace.rule_group_name
+    rules = namespace.rules
+
+    if rules is None and rule_group_name is not None:
+        raise CLIError('--rules and --rule-group-name must be provided at the same time')
+    if rules is not None and rule_group_name is None:
+        raise CLIError('--rules and --rule-group-name must be provided at the same time')

@@ -30,6 +30,8 @@ def validate_site_create(cmd, namespace):
             plan_info = client.app_service_plans.get(parsed_result['resource_group'], parsed_result['name'])
         else:
             plan_info = client.app_service_plans.get(resource_group_name, plan)
+        if not plan_info:
+            raise CLIError("The plan '{}' doesn't exist in the resource group '{}'".format(plan, resource_group_name))
         # verify that the name is available for create
         validation_payload = {
             "name": namespace.name,
@@ -117,7 +119,7 @@ def validate_add_vnet(cmd, namespace):
 
     vnet_loc = ''
     for v in list_all_vnets:
-        if v.name == vnet:
+        if vnet in (v.name, v.id):
             vnet_loc = v.location
             break
 
@@ -141,24 +143,54 @@ def validate_front_end_scale_factor(namespace):
             raise CLIError(scale_error_text.format(scale_factor, min_scale_factor, max_scale_factor))
 
 
-def validate_asp_sku(cmd, namespace):
-    import json
-    client = web_client_factory(cmd.cli_ctx)
-    serverfarm = namespace.name
-    resource_group_name = namespace.resource_group_name
-    asp = client.app_service_plans.get(resource_group_name, serverfarm, None, raw=True)
-    if asp.response.status_code != 200:
-        raise CLIError(asp.response.text)
-    # convert byte array to json
-    output_str = asp.response.content.decode('utf8')
-    res = json.loads(output_str)
+def validate_ip_address(cmd, namespace):
+    if namespace.ip_address is not None:
+        _validate_ip_address_format(namespace)
+        # For prevention of adding the duplicate IPs.
+        if 'add' in cmd.name:
+            _validate_ip_address_existence(cmd, namespace)
 
-    # Isolated SKU is supported only for ASE
-    if namespace.sku in ['I1', 'I2', 'I3']:
-        if res.get('properties').get('hostingEnvironment') is None:
-            raise CLIError("The pricing tier 'Isolated' is not allowed for this app service plan. Use this link to "
-                           "learn more: https://docs.microsoft.com/en-us/azure/app-service/overview-hosting-plans")
-    else:
-        if res.get('properties').get('hostingEnvironment') is not None:
-            raise CLIError("Only pricing tier 'Isolated' is allowed in this app service plan. Use this link to "
-                           "learn more: https://docs.microsoft.com/en-us/azure/app-service/overview-hosting-plans")
+
+def validate_onedeploy_params(namespace):
+    if namespace.src_path and namespace.src_url:
+        raise CLIError('Only one of --src-path and --src-url can be specified')
+
+    if not namespace.src_path and not namespace.src_url:
+        raise CLIError('Either of --src-path or --src-url must be specified')
+
+    if namespace.src_url and not namespace.artifact_type:
+        raise CLIError('Deployment type is mandatory when deploying from URLs. Use --type')
+
+
+def _validate_ip_address_format(namespace):
+    if namespace.ip_address is not None:
+        # IPv6
+        if ':' in namespace.ip_address:
+            if namespace.ip_address.count(':') > 1:
+                if '/' not in namespace.ip_address:
+                    namespace.ip_address = namespace.ip_address + '/128'
+                    return
+                return
+        # IPv4
+        elif '.' in namespace.ip_address:
+            if namespace.ip_address.count('.') == 3:
+                if '/' not in namespace.ip_address:
+                    namespace.ip_address = namespace.ip_address + '/32'
+                    return
+                return
+
+        raise CLIError('Invalid IP address')
+
+
+def _validate_ip_address_existence(cmd, namespace):
+    resource_group_name = namespace.resource_group_name
+    name = namespace.name
+    slot = namespace.slot
+    scm_site = namespace.scm_site
+    from ._appservice_utils import _generic_site_operation
+    configs = _generic_site_operation(cmd.cli_ctx, resource_group_name, name, 'get_configuration', slot)
+    access_rules = configs.scm_ip_security_restrictions if scm_site else configs.ip_security_restrictions
+    is_exists = [(lambda x: x.ip_address == namespace.ip_address)(x) for x in access_rules]
+    if True in is_exists:
+        raise CLIError('IP address ' + namespace.ip_address + ' already exists. '
+                       'Cannot add duplicate IP address values.')
